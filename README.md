@@ -8,6 +8,8 @@ Here some good reads:
 by Erdal Arikan - 2009
 * On the Rate of Channel Polarization  
 by Erdal Arikan and Emre Telatar - 2009
+* Fast Polar Decoders: Algorithm and Implementation  
+by Gabi Sarkis, Pascal Giard, Alexander Vardy, Claude Thibeault and Warren J. Gross - 2013
 * [The Flesh of Polar Codes](https://youtu.be/VhyoZSB9g0w)  
 by Emre Telatar - ISIT 2017
 
