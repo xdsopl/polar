@@ -102,11 +102,24 @@ class PolarCompiler
 		}
 		return *frozen == (1<<(1<<U))-1;
 	}
+	static bool all_info(const uint8_t *frozen, int index, int level)
+	{
+		if (level > U) {
+			if (!all_info(frozen, index, level-1))
+				return false;
+			if (!all_info(frozen+(1<<(level-1-U)), index+(1<<(level-1)), level-1))
+				return false;
+			return true;
+		}
+		return *frozen == 0;
+	}
 	static void compile(uint32_t **program, const uint8_t *frozen, int index, int level)
 	{
 		if (level > U) {
 			if (all_frozen(frozen, index, level)) {
 				*(*program)++ = node(4, level, index);
+			} else if (all_info(frozen, index, level)) {
+				*(*program)++ = node(5, level, index);
 			} else {
 				*(*program)++ = node(1, level, index);
 				compile(program, frozen, index, level-1);
@@ -159,6 +172,7 @@ class PolarDecoder
 	}
 	static void leaf0(int8_t **msg, int8_t *hard, const int8_t *soft)
 	{
+#if 0
 		int8_t soft20 = soft[0];
 		int8_t soft21 = soft[1];
 		int8_t soft22 = soft[2];
@@ -187,6 +201,16 @@ class PolarDecoder
 		hard[1] = hard1;
 		hard[2] = hard2;
 		hard[3] = hard3;
+#else
+		hard[0] = signum(soft[0]);
+		hard[1] = signum(soft[1]);
+		hard[2] = signum(soft[2]);
+		hard[3] = signum(soft[3]);
+		*(*msg)++ = hard[0] * hard[1] * hard[2] * hard[3];
+		*(*msg)++ = hard[1] * hard[3];
+		*(*msg)++ = hard[2] * hard[3];
+		*(*msg)++ = hard[3];
+#endif
 	}
 	static void leaf1(int8_t **msg, int8_t *hard, const int8_t *soft)
 	{
@@ -577,6 +601,23 @@ class PolarDecoder
 		for (int i = index; i < index+length; ++i)
 			hard[i] = 1;
 	}
+	template <int level>
+	void rate1(int8_t **msg, int index)
+	{
+		assert(level <= M);
+		int length = 1 << level;
+		for (int i = index; i < index+length; ++i)
+			hard[i] = signum(soft[level-U][i]);
+		for (int i = 0; i < length; i += 2) {
+			(*msg)[i] = hard[index+i] * hard[index+i+1];
+			(*msg)[i+1] = hard[index+i+1];
+		}
+		for (int h = 2; h < length; h *= 2)
+			for (int i = 0; i < length; i += 2 * h)
+				for (int j = i; j < i + h; ++j)
+					(*msg)[j] *= (*msg)[j+h];
+		*msg += length;
+	}
 	int8_t soft[M+1-U][N];
 	int8_t hard[N];
 	void decode(int8_t **msg, int func, int index)
@@ -714,6 +755,35 @@ class PolarDecoder
 		case 157: rate0<29>(msg, index); break;
 		case 158: rate0<30>(msg, index); break;
 		case 159: rate0<31>(msg, index); break;
+		case 163: rate1<3>(msg, index); break;
+		case 164: rate1<4>(msg, index); break;
+		case 165: rate1<5>(msg, index); break;
+		case 166: rate1<6>(msg, index); break;
+		case 167: rate1<7>(msg, index); break;
+		case 168: rate1<8>(msg, index); break;
+		case 169: rate1<9>(msg, index); break;
+		case 170: rate1<10>(msg, index); break;
+		case 171: rate1<11>(msg, index); break;
+		case 172: rate1<12>(msg, index); break;
+		case 173: rate1<13>(msg, index); break;
+		case 174: rate1<14>(msg, index); break;
+		case 175: rate1<15>(msg, index); break;
+		case 176: rate1<16>(msg, index); break;
+		case 177: rate1<17>(msg, index); break;
+		case 178: rate1<18>(msg, index); break;
+		case 179: rate1<19>(msg, index); break;
+		case 180: rate1<20>(msg, index); break;
+		case 181: rate1<21>(msg, index); break;
+		case 182: rate1<22>(msg, index); break;
+		case 183: rate1<23>(msg, index); break;
+		case 184: rate1<24>(msg, index); break;
+		case 185: rate1<25>(msg, index); break;
+		case 186: rate1<26>(msg, index); break;
+		case 187: rate1<27>(msg, index); break;
+		case 188: rate1<28>(msg, index); break;
+		case 189: rate1<29>(msg, index); break;
+		case 190: rate1<30>(msg, index); break;
+		case 191: rate1<31>(msg, index); break;
 		default:
 			assert(false);
 		}
