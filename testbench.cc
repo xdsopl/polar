@@ -102,12 +102,12 @@ class PolarCompiler
 		}
 		return *frozen == (1<<(1<<U))-1;
 	}
-	static bool all_info(const uint8_t *frozen, int index, int level)
+	static bool none_frozen(const uint8_t *frozen, int index, int level)
 	{
 		if (level > U) {
-			if (!all_info(frozen, index, level-1))
+			if (!none_frozen(frozen, index, level-1))
 				return false;
-			if (!all_info(frozen+(1<<(level-1-U)), index+(1<<(level-1)), level-1))
+			if (!none_frozen(frozen+(1<<(level-1-U)), index+(1<<(level-1)), level-1))
 				return false;
 			return true;
 		}
@@ -118,7 +118,7 @@ class PolarCompiler
 		if (level > U) {
 			if (all_frozen(frozen, index, level)) {
 				*(*program)++ = node(4, level, index);
-			} else if (all_info(frozen, index, level)) {
+			} else if (none_frozen(frozen, index, level)) {
 				*(*program)++ = node(5, level, index);
 			} else {
 				*(*program)++ = node(1, level, index);
