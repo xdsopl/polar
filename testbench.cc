@@ -52,6 +52,37 @@ public:
 };
 
 template <int M>
+class PolarSysEnc
+{
+	static const int N = 1 << M;
+	static const int U = 2;
+public:
+	void operator()(int8_t *codeword, const int8_t *message, const uint8_t *frozen)
+	{
+		for (int i = 0; i < N; i += 2) {
+			int msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? 1 : *message++;
+			int msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? 1 : *message++;
+			codeword[i] = msg0 * msg1;
+			codeword[i+1] = msg1;
+		}
+		for (int h = 2; h < N; h *= 2)
+			for (int i = 0; i < N; i += 2 * h)
+				for (int j = i; j < i + h; ++j)
+					codeword[j] *= codeword[j+h];
+		for (int i = 0; i < N; i += 2) {
+			int msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? 1 : codeword[i];
+			int msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? 1 : codeword[i+1];
+			codeword[i] = msg0 * msg1;
+			codeword[i+1] = msg1;
+		}
+		for (int h = 2; h < N; h *= 2)
+			for (int i = 0; i < N; i += 2 * h)
+				for (int j = i; j < i + h; ++j)
+					codeword[j] *= codeword[j+h];
+	}
+};
+
+template <int M>
 class PolarFreezer
 {
 	static const int N = 1 << M;
@@ -834,11 +865,8 @@ int main()
 		for (int i = 0; i < K; ++i)
 			message[i] = 1 - 2 * data();
 		if (systematic) {
-			encode(codeword, message, frozen);
-			for (int i = 0, j = 0; i < N; ++i)
-				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
-					decoded[j++] = codeword[i];
-			encode(codeword, decoded, frozen);
+			PolarSysEnc<M> sysenc;
+			sysenc(codeword, message, frozen);
 			for (int i = 0, j = 0; i < N; ++i)
 				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
 					assert(codeword[i] == message[j++]);
