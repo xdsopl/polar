@@ -116,11 +116,11 @@ class PolarCompiler
 	static const int U = 2;
 	static uint32_t leaf(int func, int index)
 	{
-		return (func << 24) | index;
+		return (func << 24) | (index >> U);
 	}
 	static uint32_t node(int func, int level, int index)
 	{
-		return (func << 29) | (level << 24) | index;
+		return (func << 29) | (level << 24) | (index >> U);
 	}
 	static bool all_frozen(const uint8_t *frozen, int index, int level)
 	{
@@ -830,7 +830,7 @@ public:
 			soft[M-U][i] = codeword[i];
 		while (*program != 0xffffffff) {
 			int func = *program >> 24;
-			int index = *program & 0x00ffffff;
+			int index = (*program & 0x00ffffff) << U;
 			decode(&message, func, index);
 			++program;
 		};
