@@ -12,6 +12,8 @@ by Erdal Arikan and Emre Telatar - 2009
 by Erdal Arikan - 2011
 * Fast Polar Decoders: Algorithm and Implementation  
 by Gabi Sarkis, Pascal Giard, Alexander Vardy, Claude Thibeault and Warren J. Gross - 2013
+* Flexible and Low-Complexity Encoding and Decoding of Systematic Polar Codes  
+by Gabi Sarkis, Ido Tal, Pascal Giard, Alexander Vardy, Claude Thibeault and Warren J. Gross - 2015
 * [The Flesh of Polar Codes](https://youtu.be/VhyoZSB9g0w)  
 by Emre Telatar - ISIT 2017
 
