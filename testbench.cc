@@ -807,6 +807,7 @@ int main()
 	const int M = 20;
 	const int N = 1 << M;
 	const int U = 2; // unrolled at level 2
+	const bool systematic = true;
 	std::random_device rd;
 	typedef std::default_random_engine generator;
 	typedef std::uniform_int_distribution<int> distribution;
@@ -832,18 +833,37 @@ int main()
 	for (int loop = 0; loop < 100; ++loop) {
 		for (int i = 0; i < K; ++i)
 			message[i] = 1 - 2 * data();
-		encode(codeword, message, frozen);
+		if (systematic) {
+			encode(codeword, message, frozen);
+			for (int i = 0, j = 0; i < N; ++i)
+				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
+					decoded[j++] = codeword[i];
+			encode(codeword, decoded, frozen);
+			for (int i = 0, j = 0; i < N; ++i)
+				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
+					assert(codeword[i] == message[j++]);
+		} else {
+			encode(codeword, message, frozen);
+		}
 		for (int i = 0; i < erasure_probability * N; ++i)
 			codeword[epos()] = 0;
 		auto start = std::chrono::system_clock::now();
 		(*decode)(decoded, codeword, program);
 		auto end = std::chrono::system_clock::now();
 		auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+		auto signum = [](int v){ return (v > 0) - (v < 0); };
+		if (systematic) {
+			for (int i = 0; i < K; ++i)
+				decoded[i] = signum(decoded[i]);
+			encode(codeword, decoded, frozen);
+			for (int i = 0, j = 0; i < N; ++i)
+				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
+					decoded[j++] = codeword[i];
+		}
 		int erasures = 0;
 		for (int i = 0; i < K; ++i)
 			erasures += !decoded[i];
 		int errors = 0;
-		auto signum = [](int v){ return (v > 0) - (v < 0); };
 		for (int i = 0; i < K; ++i)
 			errors += signum(decoded[i]) * message[i] < 0;
 		std::cout << errors << " " << erasures << " " << msec.count() << std::endl;
