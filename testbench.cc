@@ -901,22 +901,22 @@ int main()
 #else
 	auto orig = new int8_t[N];
 	auto noisy = new int8_t[N];
-	auto symb = new float[N];
-	float min_SNR = 20, max_mbs = 0;
-	for (float SNR = -5; SNR <= 0; SNR += 0.1) {
-		//float mean_signal = 0;
-		float sigma_signal = 1;
-		float mean_noise = 0;
-		float sigma_noise = std::sqrt(sigma_signal * sigma_signal / (2 * std::pow(10, SNR / 10)));
+	auto symb = new double[N];
+	double min_SNR = 20, max_mbs = 0;
+	for (double SNR = -5; SNR <= 0; SNR += 0.1) {
+		//double mean_signal = 0;
+		double sigma_signal = 1;
+		double mean_noise = 0;
+		double sigma_noise = std::sqrt(sigma_signal * sigma_signal / (2 * std::pow(10, SNR / 10)));
 
-		typedef std::normal_distribution<float> normal;
+		typedef std::normal_distribution<double> normal;
 		auto awgn = std::bind(normal(mean_noise, sigma_noise), generator(rd()));
 
-		int awgn_errors = 0;
-		int quantization_erasures = 0;
-		int uncorrected_errors = 0;
-		int loops = 10;
-		float avg_mbs = 0;
+		int64_t awgn_errors = 0;
+		int64_t quantization_erasures = 0;
+		int64_t uncorrected_errors = 0;
+		int64_t loops = 10;
+		double avg_mbs = 0;
 		for (int l = 0; l < loops; ++l) {
 			for (int i = 0; i < K; ++i)
 				message[i] = 1 - 2 * data();
@@ -942,10 +942,10 @@ int main()
 
 			// $LLR=log(\frac{p(x=+1|y)}{p(x=-1|y)})$
 			// $p(x|\mu,\sigma)=\frac{1}{\sqrt{2\pi}\sigma}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}$
-			float DIST = 2; // BPSK
-			float fact = DIST / (sigma_noise * sigma_noise);
+			double DIST = 2; // BPSK
+			double fact = DIST / (sigma_noise * sigma_noise);
 			for (int i = 0; i < N; ++i)
-				codeword[i] = std::min<float>(std::max<float>(std::nearbyint(fact * symb[i]), -128), 127);
+				codeword[i] = std::min<double>(std::max<double>(std::nearbyint(fact * symb[i]), -128), 127);
 
 			for (int i = 0; i < N; ++i)
 				noisy[i] = codeword[i];
@@ -954,7 +954,7 @@ int main()
 			(*decode)(decoded, codeword, program);
 			auto end = std::chrono::system_clock::now();
 			auto usec = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-			float mbs = (float)K / usec.count();
+			double mbs = (double)K / usec.count();
 			avg_mbs += mbs;
 
 			if (systematic) {
@@ -974,7 +974,7 @@ int main()
 
 		avg_mbs /= loops;
 		max_mbs = std::max(max_mbs, avg_mbs);
-		float bit_error_rate = (float)uncorrected_errors / (float)(K * loops);
+		double bit_error_rate = (double)uncorrected_errors / (double)(K * loops);
 		if (!uncorrected_errors)
 			min_SNR = std::min(min_SNR, SNR);
 
