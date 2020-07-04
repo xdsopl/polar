@@ -847,7 +847,6 @@ int main()
 	typedef std::default_random_engine generator;
 	typedef std::uniform_int_distribution<int> distribution;
 	auto data = std::bind(distribution(0, 1), generator(rd()));
-	auto epos = std::bind(distribution(0, N-1), generator(rd()));
 	auto frozen = new uint8_t[N>>U];
 	auto codeword = new int8_t[N];
 	PolarFreezer<M> freeze;
@@ -864,6 +863,8 @@ int main()
 	std::cerr << "sizeof(PolarDecoder<M>) = " << sizeof(PolarDecoder<M>) << std::endl;
 	auto decode = new PolarDecoder<M>;
 
+#if 0
+	auto epos = std::bind(distribution(0, N-1), generator(rd()));
 	std::cerr << "errors erasures msec" << std::endl;
 	for (int loop = 0; loop < 100; ++loop) {
 		for (int i = 0; i < K; ++i)
@@ -897,6 +898,95 @@ int main()
 			errors += decoded[i] * message[i] < 0;
 		std::cout << errors << " " << erasures << " " << msec.count() << std::endl;
 	}
+#else
+	auto orig = new int8_t[N];
+	auto noisy = new int8_t[N];
+	auto symb = new float[N];
+	float min_SNR = 20, avg_mbs = 0;
+	int count = 0;
+	for (float SNR = -5; SNR <= 0; SNR += 0.01, ++count) {
+		//float mean_signal = 0;
+		float sigma_signal = 1;
+		float mean_noise = 0;
+		float sigma_noise = std::sqrt(sigma_signal * sigma_signal / (2 * std::pow(10, SNR / 10)));
 
+		typedef std::normal_distribution<float> normal;
+		auto awgn = std::bind(normal(mean_noise, sigma_noise), generator(rd()));
+
+		for (int i = 0; i < K; ++i)
+			message[i] = 1 - 2 * data();
+
+		if (systematic) {
+			PolarSysEnc<M> sysenc;
+			sysenc(codeword, message, frozen);
+			for (int i = 0, j = 0; i < N; ++i)
+				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
+					assert(codeword[i] == message[j++]);
+		} else {
+			encode(codeword, message, frozen);
+		}
+
+		for (int i = 0; i < N; ++i)
+			orig[i] = codeword[i];
+
+		for (int i = 0; i < N; ++i)
+			symb[i] = codeword[i];
+
+		for (int i = 0; i < N; ++i)
+			symb[i] += awgn();
+
+		// $LLR=log(\frac{p(x=+1|y)}{p(x=-1|y)})$
+		// $p(x|\mu,\sigma)=\frac{1}{\sqrt{2\pi}\sigma}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}$
+		float DIST = 2; // BPSK
+		float fact = DIST / (sigma_noise * sigma_noise);
+		for (int i = 0; i < N; ++i)
+			codeword[i] = std::min<float>(std::max<float>(std::nearbyint(fact * symb[i]), -128), 127);
+
+		for (int i = 0; i < N; ++i)
+			noisy[i] = codeword[i];
+
+		auto start = std::chrono::system_clock::now();
+		(*decode)(decoded, codeword, program);
+		auto end = std::chrono::system_clock::now();
+		auto usec = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+		float mbs = (float)K / usec.count();
+		avg_mbs += mbs;
+
+		if (systematic) {
+			encode(codeword, decoded, frozen);
+			for (int i = 0, j = 0; i < N; ++i)
+				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
+					decoded[j++] = codeword[i];
+		}
+
+		int awgn_errors = 0;
+		for (int i = 0; i < N; ++i)
+			awgn_errors += noisy[i] * orig[i] < 0;
+		int quantization_erasures = 0;
+		for (int i = 0; i < N; ++i)
+			quantization_erasures += !noisy[i];
+		int uncorrected_errors = 0;
+		for (int i = 0; i < K; ++i)
+			uncorrected_errors += decoded[i] * message[i] <= 0;
+		float bit_error_rate = (float)uncorrected_errors / (float)K;
+
+		if (!uncorrected_errors)
+			min_SNR = std::min(min_SNR, SNR);
+
+		if (0) {
+			std::cerr << SNR << " Es/N0 => AWGN with standard deviation of " << sigma_noise << " and mean " << mean_noise << std::endl;
+			std::cerr << awgn_errors << " errors caused by AWGN." << std::endl;
+			std::cerr << quantization_erasures << " erasures caused by quantization." << std::endl;
+			std::cerr << uncorrected_errors << " errors uncorrected." << std::endl;
+			std::cerr << bit_error_rate << " bit error rate." << std::endl;
+			std::cerr << usec.count() << " microseconds to decode." << std::endl;
+			std::cerr << mbs << " megabit per second." << std::endl;
+		} else {
+			std::cout << SNR << " " << bit_error_rate << " " << mbs << std::endl;
+		}
+	}
+	avg_mbs /= count;
+	std::cerr << "QEF at: " << min_SNR << " SNR, avg speed: " << avg_mbs << " Mb/s." << std::endl;
+#endif
 	return 0;
 }
