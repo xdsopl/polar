@@ -17,3 +17,7 @@ by Gabi Sarkis, Ido Tal, Pascal Giard, Alexander Vardy, Claude Thibeault and War
 * [The Flesh of Polar Codes](https://youtu.be/VhyoZSB9g0w)  
 by Emre Telatar - ISIT 2017
 
+### Comparing various systematic and non-systematic rate-1/2 code lengths
+
+![BER with logarithmic scale](ber_log.png)
+
