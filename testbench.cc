@@ -204,10 +204,10 @@ class PolarDecoder
 	void leaf0(int8_t **msg, int index)
 	{
 #if 0
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -233,10 +233,10 @@ class PolarDecoder
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 #else
-		int8_t hard0 = signum(soft[0][index+0]);
-		int8_t hard1 = signum(soft[0][index+1]);
-		int8_t hard2 = signum(soft[0][index+2]);
-		int8_t hard3 = signum(soft[0][index+3]);
+		int8_t hard0 = signum(soft[(1<<U)+0]);
+		int8_t hard1 = signum(soft[(1<<U)+1]);
+		int8_t hard2 = signum(soft[(1<<U)+2]);
+		int8_t hard3 = signum(soft[(1<<U)+3]);
 		*(*msg)++ = hard0 * hard1 * hard2 * hard3;
 		*(*msg)++ = hard1 * hard3;
 		*(*msg)++ = hard2 * hard3;
@@ -249,10 +249,10 @@ class PolarDecoder
 	}
 	void leaf1(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t hard0 = 1;
@@ -278,10 +278,10 @@ class PolarDecoder
 	}
 	void leaf2(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -306,10 +306,10 @@ class PolarDecoder
 	}
 	void leaf3(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t hard0 = 1;
 		int8_t hard1 = 1;
 		int8_t soft12 = qadd(soft20, soft22);
@@ -330,10 +330,10 @@ class PolarDecoder
 	}
 	void leaf4(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -359,10 +359,10 @@ class PolarDecoder
 	}
 	void leaf5(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t hard0 = 1;
@@ -386,10 +386,10 @@ class PolarDecoder
 	}
 	void leaf6(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -412,10 +412,10 @@ class PolarDecoder
 	}
 	void leaf7(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t hard0 = 1;
 		int8_t hard1 = 1;
 		int8_t soft12 = qadd(soft20, soft22);
@@ -434,10 +434,10 @@ class PolarDecoder
 	}
 	void leaf8(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -462,10 +462,10 @@ class PolarDecoder
 	}
 	void leaf9(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t hard0 = 1;
@@ -488,10 +488,10 @@ class PolarDecoder
 	}
 	void leaf10(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -513,10 +513,10 @@ class PolarDecoder
 	}
 	void leaf11(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t hard0 = 1;
 		int8_t hard1 = 1;
 		int8_t soft12 = qadd(soft20, soft22);
@@ -534,10 +534,10 @@ class PolarDecoder
 	}
 	void leaf12(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -556,10 +556,10 @@ class PolarDecoder
 	}
 	void leaf13(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t hard0 = 1;
@@ -576,10 +576,10 @@ class PolarDecoder
 	}
 	void leaf14(int8_t **msg, int index)
 	{
-		int8_t soft20 = soft[0][index+0];
-		int8_t soft21 = soft[0][index+1];
-		int8_t soft22 = soft[0][index+2];
-		int8_t soft23 = soft[0][index+3];
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
 		int8_t soft10 = prod(soft20, soft22);
 		int8_t soft11 = prod(soft21, soft23);
 		int8_t soft00 = prod(soft10, soft11);
@@ -605,12 +605,12 @@ class PolarDecoder
 		hard[index+3] = hard3;
 	}
 	template <int level>
-	void node1(int8_t **, int index)
+	void node1(int8_t **, int)
 	{
 		assert(level <= M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			soft[level-1-U][index+i] = prod(soft[level-U][index+i], soft[level-U][index+i+length/2]);
+			soft[i+length/2] = prod(soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
 	void node2(int8_t **, int index)
@@ -618,7 +618,7 @@ class PolarDecoder
 		assert(level <= M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			soft[level-1-U][index+i+length/2] = madd(hard[index+i], soft[level-U][index+i], soft[level-U][index+i+length/2]);
+			soft[i+length/2] = madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
 	void node3(int8_t **, int index)
@@ -642,7 +642,7 @@ class PolarDecoder
 		assert(level <= M);
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
-			hard[index+i] = signum(soft[level-U][index+i]);
+			hard[index+i] = signum(soft[i+length]);
 		for (int i = 0; i < length; i += 2) {
 			(*msg)[i] = hard[index+i] * hard[index+i+1];
 			(*msg)[i+1] = hard[index+i+1];
@@ -653,7 +653,7 @@ class PolarDecoder
 					(*msg)[j] *= (*msg)[j+h];
 		*msg += length;
 	}
-	int8_t soft[M+1-U][N];
+	int8_t soft[2*N];
 	int8_t hard[N];
 	void decode(int8_t **msg, int func, int index)
 	{
@@ -827,7 +827,7 @@ public:
 	void operator()(int8_t *message, const int8_t *codeword, const uint32_t *program)
 	{
 		for (int i = 0; i < N; ++i)
-			soft[M-U][i] = codeword[i];
+			soft[i+N] = codeword[i];
 		while (*program != 0xffffffff) {
 			int func = *program >> 24;
 			int index = (*program & 0x00ffffff) << U;
