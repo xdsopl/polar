@@ -915,6 +915,7 @@ int main()
 		int64_t awgn_errors = 0;
 		int64_t quantization_erasures = 0;
 		int64_t uncorrected_errors = 0;
+		int64_t ambiguity_erasures = 0;
 		int64_t loops = 10;
 		double avg_mbs = 0;
 		for (int l = 0; l < loops; ++l) {
@@ -969,13 +970,15 @@ int main()
 			for (int i = 0; i < N; ++i)
 				quantization_erasures += !noisy[i];
 			for (int i = 0; i < K; ++i)
-				uncorrected_errors += decoded[i] * message[i] <= 0;
+				uncorrected_errors += decoded[i] * message[i] < 0;
+			for (int i = 0; i < K; ++i)
+				ambiguity_erasures += !decoded[i];
 		}
 
 		avg_mbs /= loops;
 		max_mbs = std::max(max_mbs, avg_mbs);
-		double bit_error_rate = (double)uncorrected_errors / (double)(K * loops);
-		if (!uncorrected_errors)
+		double bit_error_rate = (double)(uncorrected_errors + ambiguity_erasures) / (double)(K * loops);
+		if (!uncorrected_errors && !ambiguity_erasures)
 			min_SNR = std::min(min_SNR, SNR);
 
 		if (0) {
@@ -983,6 +986,7 @@ int main()
 			std::cerr << awgn_errors << " errors caused by AWGN." << std::endl;
 			std::cerr << quantization_erasures << " erasures caused by quantization." << std::endl;
 			std::cerr << uncorrected_errors << " errors uncorrected." << std::endl;
+			std::cerr << ambiguity_erasures << " ambiguity erasures." << std::endl;
 			std::cerr << bit_error_rate << " bit error rate." << std::endl;
 			std::cerr << avg_mbs << " megabit per second." << std::endl;
 		} else {
