@@ -145,6 +145,10 @@ class PolarCompiler
 	{
 		return node(6, level, index);
 	}
+	static uint32_t spc(int level, int index)
+	{
+		return node(7, level, index);
+	}
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
 		int count = 0;
@@ -162,6 +166,8 @@ class PolarCompiler
 				*(*program)++ = rate1(level, index);
 			} else if (count == (1<<level)-1 && frozen[(1<<(level-U))-1] == (1<<((1<<U)-1))-1) {
 				*(*program)++ = rep(level, index);
+			} else if (count == 1 && frozen[0] == 1) {
+				*(*program)++ = spc(level, index);
 			} else {
 				*(*program)++ = node(1, level, index);
 				compile(program, frozen, index, level-1);
@@ -191,6 +197,10 @@ class PolarDecoder
 	static int8_t signum(int8_t v)
 	{
 		return (v > 0) - (v < 0);
+	}
+	static int8_t decide(int8_t v)
+	{
+		return (v >= 0) - (v < 0);
 	}
 	static int8_t qabs(int8_t a)
 	{
@@ -260,6 +270,7 @@ class PolarDecoder
 	}
 	void leaf1(int8_t **msg, int index)
 	{
+#if 0
 		int8_t soft20 = soft[(1<<U)+0];
 		int8_t soft21 = soft[(1<<U)+1];
 		int8_t soft22 = soft[(1<<U)+2];
@@ -286,6 +297,32 @@ class PolarDecoder
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
+#else
+		int8_t hard0 = signum(soft[(1<<U)+0]);
+		int8_t hard1 = signum(soft[(1<<U)+1]);
+		int8_t hard2 = signum(soft[(1<<U)+2]);
+		int8_t hard3 = signum(soft[(1<<U)+3]);
+		int8_t parity = hard0 * hard1 * hard2 * hard3;
+		int8_t mag0 = qabs(soft[(1<<U)+0]);
+		int8_t mag1 = qabs(soft[(1<<U)+1]);
+		int8_t mag2 = qabs(soft[(1<<U)+2]);
+		int8_t mag3 = qabs(soft[(1<<U)+3]);
+		if (mag0 <= mag1 && mag0 <= mag2 && mag0 <= mag3)
+			hard0 *= parity;
+		else if (mag1 <= mag0 && mag1 <= mag2 && mag1 <= mag3)
+			hard1 *= parity;
+		else if (mag2 <= mag0 && mag2 <= mag1 && mag2 <= mag3)
+			hard2 *= parity;
+		else
+			hard3 *= parity;
+		*(*msg)++ = hard1 * hard3;
+		*(*msg)++ = hard2 * hard3;
+		*(*msg)++ = hard3;
+		hard[index+0] = hard0;
+		hard[index+1] = hard1;
+		hard[index+2] = hard2;
+		hard[index+3] = hard3;
+#endif
 	}
 	void leaf2(int8_t **msg, int index)
 	{
@@ -677,6 +714,32 @@ class PolarDecoder
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = hardi;
 	}
+	template <int level>
+	void spc(int8_t **msg, int index)
+	{
+		assert(level <= M);
+		int length = 1 << level;
+		for (int i = 0; i < length; ++i)
+			hard[index+i] = decide(soft[i+length]);
+		int parity = hard[index];
+		for (int i = 1; i < length; ++i)
+			parity *= hard[index+i];
+		int worst = 0;
+		for (int i = 1; i < length; ++i)
+			if (std::abs(soft[i+length]) < std::abs(soft[worst+length]))
+				worst = i;
+		hard[worst] *= parity;
+		for (int i = 0; i < length; i += 2) {
+			soft[i] = hard[index+i] * hard[index+i+1];
+			soft[i+1] = hard[index+i+1];
+		}
+		for (int h = 2; h < length; h *= 2)
+			for (int i = 0; i < length; i += 2 * h)
+				for (int j = i; j < i + h; ++j)
+					soft[j] *= soft[j+h];
+		for (int i = 1; i < length; ++i)
+			*(*msg)++ = soft[i];
+	}
 	int8_t soft[2*N];
 	int8_t hard[N];
 	void decode(int8_t **msg, int func, int index)
@@ -872,6 +935,35 @@ class PolarDecoder
 		case (6<<5)+29: rep<29>(msg, index); break;
 		case (6<<5)+30: rep<30>(msg, index); break;
 		case (6<<5)+31: rep<31>(msg, index); break;
+		case (7<<5)+3: spc<3>(msg, index); break;
+		case (7<<5)+4: spc<4>(msg, index); break;
+		case (7<<5)+5: spc<5>(msg, index); break;
+		case (7<<5)+6: spc<6>(msg, index); break;
+		case (7<<5)+7: spc<7>(msg, index); break;
+		case (7<<5)+8: spc<8>(msg, index); break;
+		case (7<<5)+9: spc<9>(msg, index); break;
+		case (7<<5)+10: spc<10>(msg, index); break;
+		case (7<<5)+11: spc<11>(msg, index); break;
+		case (7<<5)+12: spc<12>(msg, index); break;
+		case (7<<5)+13: spc<13>(msg, index); break;
+		case (7<<5)+14: spc<14>(msg, index); break;
+		case (7<<5)+15: spc<15>(msg, index); break;
+		case (7<<5)+16: spc<16>(msg, index); break;
+		case (7<<5)+17: spc<17>(msg, index); break;
+		case (7<<5)+18: spc<18>(msg, index); break;
+		case (7<<5)+19: spc<19>(msg, index); break;
+		case (7<<5)+20: spc<20>(msg, index); break;
+		case (7<<5)+21: spc<21>(msg, index); break;
+		case (7<<5)+22: spc<22>(msg, index); break;
+		case (7<<5)+23: spc<23>(msg, index); break;
+		case (7<<5)+24: spc<24>(msg, index); break;
+		case (7<<5)+25: spc<25>(msg, index); break;
+		case (7<<5)+26: spc<26>(msg, index); break;
+		case (7<<5)+27: spc<27>(msg, index); break;
+		case (7<<5)+28: spc<28>(msg, index); break;
+		case (7<<5)+29: spc<29>(msg, index); break;
+		case (7<<5)+30: spc<30>(msg, index); break;
+		case (7<<5)+31: spc<31>(msg, index); break;
 		default:
 			assert(false);
 		}
