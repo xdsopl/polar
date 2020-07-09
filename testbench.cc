@@ -133,6 +133,14 @@ class PolarCompiler
 	{
 		return (func << 29) | (level << 24) | (index >> U);
 	}
+	static uint32_t rate0(int level, int index)
+	{
+		return node(4, level, index);
+	}
+	static uint32_t rate1(int level, int index)
+	{
+		return node(5, level, index);
+	}
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
 		int count = 0;
@@ -145,9 +153,9 @@ class PolarCompiler
 		if (level > U) {
 			int count = frozen_count(frozen, level);
 			if (count == 1<<level) {
-				*(*program)++ = node(4, level, index);
+				*(*program)++ = rate0(level, index);
 			} else if (count == 0) {
-				*(*program)++ = node(5, level, index);
+				*(*program)++ = rate1(level, index);
 			} else {
 				*(*program)++ = node(1, level, index);
 				compile(program, frozen, index, level-1);
