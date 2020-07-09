@@ -109,6 +109,17 @@ public:
 	}
 };
 
+template<typename TYPE>
+int popcnt(TYPE x)
+{
+	int cnt = 0;
+	while (x) {
+		++cnt;
+		x &= x-1;
+	}
+	return cnt;
+}
+
 template <int M>
 class PolarCompiler
 {
@@ -122,34 +133,20 @@ class PolarCompiler
 	{
 		return (func << 29) | (level << 24) | (index >> U);
 	}
-	static bool all_frozen(const uint8_t *frozen, int index, int level)
+	static int frozen_count(const uint8_t *frozen, int level)
 	{
-		if (level > U) {
-			if (!all_frozen(frozen, index, level-1))
-				return false;
-			if (!all_frozen(frozen+(1<<(level-1-U)), index+(1<<(level-1)), level-1))
-				return false;
-			return true;
-		}
-		return *frozen == (1<<(1<<U))-1;
-	}
-	static bool none_frozen(const uint8_t *frozen, int index, int level)
-	{
-		if (level > U) {
-			if (!none_frozen(frozen, index, level-1))
-				return false;
-			if (!none_frozen(frozen+(1<<(level-1-U)), index+(1<<(level-1)), level-1))
-				return false;
-			return true;
-		}
-		return *frozen == 0;
+		int count = 0;
+		for (int i = 0; i < 1<<(level-U); ++i)
+			count += popcnt(frozen[i]);
+		return count;
 	}
 	static void compile(uint32_t **program, const uint8_t *frozen, int index, int level)
 	{
 		if (level > U) {
-			if (all_frozen(frozen, index, level)) {
+			int count = frozen_count(frozen, level);
+			if (count == 1<<level) {
 				*(*program)++ = node(4, level, index);
-			} else if (none_frozen(frozen, index, level)) {
+			} else if (count == 0) {
 				*(*program)++ = node(5, level, index);
 			} else {
 				*(*program)++ = node(1, level, index);
