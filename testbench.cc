@@ -150,6 +150,10 @@ class PolarCompiler
 	{
 		return node(5, level);
 	}
+	static uint8_t rep(int level)
+	{
+		return node(6, level);
+	}
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
 		int count = 0;
@@ -165,6 +169,8 @@ class PolarCompiler
 				*(*program)++ = rate0(level);
 			} else if (count == 0) {
 				*(*program)++ = rate1(level);
+			} else if (count == (1<<level)-1 && frozen[(1<<(level-U))-1] == (1<<((1<<U)-1))-1) {
+				*(*program)++ = rep(level);
 			} else {
 				*(*program)++ = left(level);
 				compile(program, frozen, level-1);
@@ -431,6 +437,7 @@ class PolarDecoder
 	}
 	void leaf7(int8_t **msg, int index)
 	{
+#if 0
 		int8_t soft20 = soft[(1<<U)+0];
 		int8_t soft21 = soft[(1<<U)+1];
 		int8_t soft22 = soft[(1<<U)+2];
@@ -450,6 +457,21 @@ class PolarDecoder
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
+#else
+		int8_t soft20 = soft[(1<<U)+0];
+		int8_t soft21 = soft[(1<<U)+1];
+		int8_t soft22 = soft[(1<<U)+2];
+		int8_t soft23 = soft[(1<<U)+3];
+		int8_t soft12 = qadd(soft20, soft22);
+		int8_t soft13 = qadd(soft21, soft23);
+		int8_t soft03 = qadd(soft12, soft13);
+		int8_t hard3 = signum(soft03);
+		*(*msg)++ = hard3;
+		hard[index+0] = hard3;
+		hard[index+1] = hard3;
+		hard[index+2] = hard3;
+		hard[index+3] = hard3;
+#endif
 	}
 	void leaf8(int8_t **msg, int index)
 	{
@@ -673,6 +695,19 @@ class PolarDecoder
 		for (int i = 0; i < length; ++i)
 			*(*msg)++ = soft[i];
 	}
+	template <int level>
+	void rep(int8_t **msg, int index)
+	{
+		assert(level <= MAX_M);
+		int length = 1 << level;
+		for (int h = length; h; h /= 2)
+			for (int i = 0; i < h/2; ++i)
+				soft[i+h/2] = qadd(soft[i+h], soft[i+h/2+h]);
+		int hardi = signum(soft[1]);
+		*(*msg)++ = hardi;
+		for (int i = 0; i < length; ++i)
+			hard[index+i] = hardi;
+	}
 	int8_t soft[2*MAX_N];
 	int8_t hard[MAX_N];
 public:
@@ -848,6 +883,35 @@ public:
 			case (5<<5)+29: rate1<29>(msg, idx); break;
 			case (5<<5)+30: rate1<30>(msg, idx); break;
 			case (5<<5)+31: rate1<31>(msg, idx); break;
+			case (6<<5)+3: rep<3>(msg, idx); break;
+			case (6<<5)+4: rep<4>(msg, idx); break;
+			case (6<<5)+5: rep<5>(msg, idx); break;
+			case (6<<5)+6: rep<6>(msg, idx); break;
+			case (6<<5)+7: rep<7>(msg, idx); break;
+			case (6<<5)+8: rep<8>(msg, idx); break;
+			case (6<<5)+9: rep<9>(msg, idx); break;
+			case (6<<5)+10: rep<10>(msg, idx); break;
+			case (6<<5)+11: rep<11>(msg, idx); break;
+			case (6<<5)+12: rep<12>(msg, idx); break;
+			case (6<<5)+13: rep<13>(msg, idx); break;
+			case (6<<5)+14: rep<14>(msg, idx); break;
+			case (6<<5)+15: rep<15>(msg, idx); break;
+			case (6<<5)+16: rep<16>(msg, idx); break;
+			case (6<<5)+17: rep<17>(msg, idx); break;
+			case (6<<5)+18: rep<18>(msg, idx); break;
+			case (6<<5)+19: rep<19>(msg, idx); break;
+			case (6<<5)+20: rep<20>(msg, idx); break;
+			case (6<<5)+21: rep<21>(msg, idx); break;
+			case (6<<5)+22: rep<22>(msg, idx); break;
+			case (6<<5)+23: rep<23>(msg, idx); break;
+			case (6<<5)+24: rep<24>(msg, idx); break;
+			case (6<<5)+25: rep<25>(msg, idx); break;
+			case (6<<5)+26: rep<26>(msg, idx); break;
+			case (6<<5)+27: rep<27>(msg, idx); break;
+			case (6<<5)+28: rep<28>(msg, idx); break;
+			case (6<<5)+29: rep<29>(msg, idx); break;
+			case (6<<5)+30: rep<30>(msg, idx); break;
+			case (6<<5)+31: rep<31>(msg, idx); break;
 			default:
 				assert(false);
 			}
