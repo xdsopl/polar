@@ -125,21 +125,21 @@ class PolarCompiler
 {
 	static const int N = 1 << M;
 	static const int U = 2;
-	static uint32_t leaf(int func, int index)
+	static uint8_t leaf(int frozen)
 	{
-		return (func << 24) | (index >> U);
+		return frozen;
 	}
-	static uint32_t node(int func, int level, int index)
+	static uint8_t node(int func, int level)
 	{
-		return (func << 29) | (level << 24) | (index >> U);
+		return (func << 5) | level;
 	}
-	static uint32_t rate0(int level, int index)
+	static uint8_t rate0(int level)
 	{
-		return node(4, level, index);
+		return node(4, level);
 	}
-	static uint32_t rate1(int level, int index)
+	static uint8_t rate1(int level)
 	{
-		return node(5, level, index);
+		return node(5, level);
 	}
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
@@ -148,31 +148,31 @@ class PolarCompiler
 			count += popcnt(frozen[i]);
 		return count;
 	}
-	static void compile(uint32_t **program, const uint8_t *frozen, int index, int level)
+	static void compile(uint8_t **program, const uint8_t *frozen, int level)
 	{
 		if (level > U) {
 			int count = frozen_count(frozen, level);
 			if (count == 1<<level) {
-				*(*program)++ = rate0(level, index);
+				*(*program)++ = rate0(level);
 			} else if (count == 0) {
-				*(*program)++ = rate1(level, index);
+				*(*program)++ = rate1(level);
 			} else {
-				*(*program)++ = node(1, level, index);
-				compile(program, frozen, index, level-1);
-				*(*program)++ = node(2, level, index);
-				compile(program, frozen+(1<<(level-1-U)), index+(1<<(level-1)), level-1);
-				*(*program)++ = node(3, level, index);
+				*(*program)++ = node(1, level);
+				compile(program, frozen, level-1);
+				*(*program)++ = node(2, level);
+				compile(program, frozen+(1<<(level-1-U)), level-1);
+				*(*program)++ = node(3, level);
 			}
 		} else {
-			*(*program)++ = leaf(*frozen, index);
+			*(*program)++ = leaf(*frozen);
 		}
 	}
 public:
-	void operator()(uint32_t *program, const uint8_t *frozen)
+	void operator()(uint8_t *program, const uint8_t *frozen)
 	{
-		uint32_t *first = program;
-		compile(&program, frozen, 0, M);
-		*program++ = 0xffffffff;
+		uint8_t *first = program;
+		compile(&program, frozen, M);
+		*program++ = 255;
 		std::cerr << "program length = " << program - first << std::endl;
 	}
 };
@@ -660,185 +660,183 @@ class PolarDecoder
 	}
 	int8_t soft[2*N];
 	int8_t hard[N];
-	void decode(int8_t **msg, int func, int index)
+	int idx;
+	void decode(int8_t **msg, uint8_t code)
 	{
-		switch (func) {
-		case 0: leaf0(msg, index); break;
-		case 1: leaf1(msg, index); break;
-		case 2: leaf2(msg, index); break;
-		case 3: leaf3(msg, index); break;
-		case 4: leaf4(msg, index); break;
-		case 5: leaf5(msg, index); break;
-		case 6: leaf6(msg, index); break;
-		case 7: leaf7(msg, index); break;
-		case 8: leaf8(msg, index); break;
-		case 9: leaf9(msg, index); break;
-		case 10: leaf10(msg, index); break;
-		case 11: leaf11(msg, index); break;
-		case 12: leaf12(msg, index); break;
-		case 13: leaf13(msg, index); break;
-		case 14: leaf14(msg, index); break;
-		case 15: leaf15(msg, index); break;
-		case (1<<5)+3: node1<3>(msg, index); break;
-		case (1<<5)+4: node1<4>(msg, index); break;
-		case (1<<5)+5: node1<5>(msg, index); break;
-		case (1<<5)+6: node1<6>(msg, index); break;
-		case (1<<5)+7: node1<7>(msg, index); break;
-		case (1<<5)+8: node1<8>(msg, index); break;
-		case (1<<5)+9: node1<9>(msg, index); break;
-		case (1<<5)+10: node1<10>(msg, index); break;
-		case (1<<5)+11: node1<11>(msg, index); break;
-		case (1<<5)+12: node1<12>(msg, index); break;
-		case (1<<5)+13: node1<13>(msg, index); break;
-		case (1<<5)+14: node1<14>(msg, index); break;
-		case (1<<5)+15: node1<15>(msg, index); break;
-		case (1<<5)+16: node1<16>(msg, index); break;
-		case (1<<5)+17: node1<17>(msg, index); break;
-		case (1<<5)+18: node1<18>(msg, index); break;
-		case (1<<5)+19: node1<19>(msg, index); break;
-		case (1<<5)+20: node1<20>(msg, index); break;
-		case (1<<5)+21: node1<21>(msg, index); break;
-		case (1<<5)+22: node1<22>(msg, index); break;
-		case (1<<5)+23: node1<23>(msg, index); break;
-		case (1<<5)+24: node1<24>(msg, index); break;
-		case (1<<5)+25: node1<25>(msg, index); break;
-		case (1<<5)+26: node1<26>(msg, index); break;
-		case (1<<5)+27: node1<27>(msg, index); break;
-		case (1<<5)+28: node1<28>(msg, index); break;
-		case (1<<5)+29: node1<29>(msg, index); break;
-		case (1<<5)+30: node1<30>(msg, index); break;
-		case (1<<5)+31: node1<31>(msg, index); break;
-		case (2<<5)+3: node2<3>(msg, index); break;
-		case (2<<5)+4: node2<4>(msg, index); break;
-		case (2<<5)+5: node2<5>(msg, index); break;
-		case (2<<5)+6: node2<6>(msg, index); break;
-		case (2<<5)+7: node2<7>(msg, index); break;
-		case (2<<5)+8: node2<8>(msg, index); break;
-		case (2<<5)+9: node2<9>(msg, index); break;
-		case (2<<5)+10: node2<10>(msg, index); break;
-		case (2<<5)+11: node2<11>(msg, index); break;
-		case (2<<5)+12: node2<12>(msg, index); break;
-		case (2<<5)+13: node2<13>(msg, index); break;
-		case (2<<5)+14: node2<14>(msg, index); break;
-		case (2<<5)+15: node2<15>(msg, index); break;
-		case (2<<5)+16: node2<16>(msg, index); break;
-		case (2<<5)+17: node2<17>(msg, index); break;
-		case (2<<5)+18: node2<18>(msg, index); break;
-		case (2<<5)+19: node2<19>(msg, index); break;
-		case (2<<5)+20: node2<20>(msg, index); break;
-		case (2<<5)+21: node2<21>(msg, index); break;
-		case (2<<5)+22: node2<22>(msg, index); break;
-		case (2<<5)+23: node2<23>(msg, index); break;
-		case (2<<5)+24: node2<24>(msg, index); break;
-		case (2<<5)+25: node2<25>(msg, index); break;
-		case (2<<5)+26: node2<26>(msg, index); break;
-		case (2<<5)+27: node2<27>(msg, index); break;
-		case (2<<5)+28: node2<28>(msg, index); break;
-		case (2<<5)+29: node2<29>(msg, index); break;
-		case (2<<5)+30: node2<30>(msg, index); break;
-		case (2<<5)+31: node2<31>(msg, index); break;
-		case (3<<5)+3: node3<3>(msg, index); break;
-		case (3<<5)+4: node3<4>(msg, index); break;
-		case (3<<5)+5: node3<5>(msg, index); break;
-		case (3<<5)+6: node3<6>(msg, index); break;
-		case (3<<5)+7: node3<7>(msg, index); break;
-		case (3<<5)+8: node3<8>(msg, index); break;
-		case (3<<5)+9: node3<9>(msg, index); break;
-		case (3<<5)+10: node3<10>(msg, index); break;
-		case (3<<5)+11: node3<11>(msg, index); break;
-		case (3<<5)+12: node3<12>(msg, index); break;
-		case (3<<5)+13: node3<13>(msg, index); break;
-		case (3<<5)+14: node3<14>(msg, index); break;
-		case (3<<5)+15: node3<15>(msg, index); break;
-		case (3<<5)+16: node3<16>(msg, index); break;
-		case (3<<5)+17: node3<17>(msg, index); break;
-		case (3<<5)+18: node3<18>(msg, index); break;
-		case (3<<5)+19: node3<19>(msg, index); break;
-		case (3<<5)+20: node3<20>(msg, index); break;
-		case (3<<5)+21: node3<21>(msg, index); break;
-		case (3<<5)+22: node3<22>(msg, index); break;
-		case (3<<5)+23: node3<23>(msg, index); break;
-		case (3<<5)+24: node3<24>(msg, index); break;
-		case (3<<5)+25: node3<25>(msg, index); break;
-		case (3<<5)+26: node3<26>(msg, index); break;
-		case (3<<5)+27: node3<27>(msg, index); break;
-		case (3<<5)+28: node3<28>(msg, index); break;
-		case (3<<5)+29: node3<29>(msg, index); break;
-		case (3<<5)+30: node3<30>(msg, index); break;
-		case (3<<5)+31: node3<31>(msg, index); break;
-		case (4<<5)+3: rate0<3>(msg, index); break;
-		case (4<<5)+4: rate0<4>(msg, index); break;
-		case (4<<5)+5: rate0<5>(msg, index); break;
-		case (4<<5)+6: rate0<6>(msg, index); break;
-		case (4<<5)+7: rate0<7>(msg, index); break;
-		case (4<<5)+8: rate0<8>(msg, index); break;
-		case (4<<5)+9: rate0<9>(msg, index); break;
-		case (4<<5)+10: rate0<10>(msg, index); break;
-		case (4<<5)+11: rate0<11>(msg, index); break;
-		case (4<<5)+12: rate0<12>(msg, index); break;
-		case (4<<5)+13: rate0<13>(msg, index); break;
-		case (4<<5)+14: rate0<14>(msg, index); break;
-		case (4<<5)+15: rate0<15>(msg, index); break;
-		case (4<<5)+16: rate0<16>(msg, index); break;
-		case (4<<5)+17: rate0<17>(msg, index); break;
-		case (4<<5)+18: rate0<18>(msg, index); break;
-		case (4<<5)+19: rate0<19>(msg, index); break;
-		case (4<<5)+20: rate0<20>(msg, index); break;
-		case (4<<5)+21: rate0<21>(msg, index); break;
-		case (4<<5)+22: rate0<22>(msg, index); break;
-		case (4<<5)+23: rate0<23>(msg, index); break;
-		case (4<<5)+24: rate0<24>(msg, index); break;
-		case (4<<5)+25: rate0<25>(msg, index); break;
-		case (4<<5)+26: rate0<26>(msg, index); break;
-		case (4<<5)+27: rate0<27>(msg, index); break;
-		case (4<<5)+28: rate0<28>(msg, index); break;
-		case (4<<5)+29: rate0<29>(msg, index); break;
-		case (4<<5)+30: rate0<30>(msg, index); break;
-		case (4<<5)+31: rate0<31>(msg, index); break;
-		case (5<<5)+3: rate1<3>(msg, index); break;
-		case (5<<5)+4: rate1<4>(msg, index); break;
-		case (5<<5)+5: rate1<5>(msg, index); break;
-		case (5<<5)+6: rate1<6>(msg, index); break;
-		case (5<<5)+7: rate1<7>(msg, index); break;
-		case (5<<5)+8: rate1<8>(msg, index); break;
-		case (5<<5)+9: rate1<9>(msg, index); break;
-		case (5<<5)+10: rate1<10>(msg, index); break;
-		case (5<<5)+11: rate1<11>(msg, index); break;
-		case (5<<5)+12: rate1<12>(msg, index); break;
-		case (5<<5)+13: rate1<13>(msg, index); break;
-		case (5<<5)+14: rate1<14>(msg, index); break;
-		case (5<<5)+15: rate1<15>(msg, index); break;
-		case (5<<5)+16: rate1<16>(msg, index); break;
-		case (5<<5)+17: rate1<17>(msg, index); break;
-		case (5<<5)+18: rate1<18>(msg, index); break;
-		case (5<<5)+19: rate1<19>(msg, index); break;
-		case (5<<5)+20: rate1<20>(msg, index); break;
-		case (5<<5)+21: rate1<21>(msg, index); break;
-		case (5<<5)+22: rate1<22>(msg, index); break;
-		case (5<<5)+23: rate1<23>(msg, index); break;
-		case (5<<5)+24: rate1<24>(msg, index); break;
-		case (5<<5)+25: rate1<25>(msg, index); break;
-		case (5<<5)+26: rate1<26>(msg, index); break;
-		case (5<<5)+27: rate1<27>(msg, index); break;
-		case (5<<5)+28: rate1<28>(msg, index); break;
-		case (5<<5)+29: rate1<29>(msg, index); break;
-		case (5<<5)+30: rate1<30>(msg, index); break;
-		case (5<<5)+31: rate1<31>(msg, index); break;
+		switch (code) {
+		case 0: leaf0(msg, idx); break;
+		case 1: leaf1(msg, idx); break;
+		case 2: leaf2(msg, idx); break;
+		case 3: leaf3(msg, idx); break;
+		case 4: leaf4(msg, idx); break;
+		case 5: leaf5(msg, idx); break;
+		case 6: leaf6(msg, idx); break;
+		case 7: leaf7(msg, idx); break;
+		case 8: leaf8(msg, idx); break;
+		case 9: leaf9(msg, idx); break;
+		case 10: leaf10(msg, idx); break;
+		case 11: leaf11(msg, idx); break;
+		case 12: leaf12(msg, idx); break;
+		case 13: leaf13(msg, idx); break;
+		case 14: leaf14(msg, idx); break;
+		case 15: leaf15(msg, idx); break;
+		case (1<<5)+3: node1<3>(msg, idx); break;
+		case (1<<5)+4: node1<4>(msg, idx); break;
+		case (1<<5)+5: node1<5>(msg, idx); break;
+		case (1<<5)+6: node1<6>(msg, idx); break;
+		case (1<<5)+7: node1<7>(msg, idx); break;
+		case (1<<5)+8: node1<8>(msg, idx); break;
+		case (1<<5)+9: node1<9>(msg, idx); break;
+		case (1<<5)+10: node1<10>(msg, idx); break;
+		case (1<<5)+11: node1<11>(msg, idx); break;
+		case (1<<5)+12: node1<12>(msg, idx); break;
+		case (1<<5)+13: node1<13>(msg, idx); break;
+		case (1<<5)+14: node1<14>(msg, idx); break;
+		case (1<<5)+15: node1<15>(msg, idx); break;
+		case (1<<5)+16: node1<16>(msg, idx); break;
+		case (1<<5)+17: node1<17>(msg, idx); break;
+		case (1<<5)+18: node1<18>(msg, idx); break;
+		case (1<<5)+19: node1<19>(msg, idx); break;
+		case (1<<5)+20: node1<20>(msg, idx); break;
+		case (1<<5)+21: node1<21>(msg, idx); break;
+		case (1<<5)+22: node1<22>(msg, idx); break;
+		case (1<<5)+23: node1<23>(msg, idx); break;
+		case (1<<5)+24: node1<24>(msg, idx); break;
+		case (1<<5)+25: node1<25>(msg, idx); break;
+		case (1<<5)+26: node1<26>(msg, idx); break;
+		case (1<<5)+27: node1<27>(msg, idx); break;
+		case (1<<5)+28: node1<28>(msg, idx); break;
+		case (1<<5)+29: node1<29>(msg, idx); break;
+		case (1<<5)+30: node1<30>(msg, idx); break;
+		case (1<<5)+31: node1<31>(msg, idx); break;
+		case (2<<5)+3: node2<3>(msg, idx); idx += 1<<(3-1); break;
+		case (2<<5)+4: node2<4>(msg, idx); idx += 1<<(4-1); break;
+		case (2<<5)+5: node2<5>(msg, idx); idx += 1<<(5-1); break;
+		case (2<<5)+6: node2<6>(msg, idx); idx += 1<<(6-1); break;
+		case (2<<5)+7: node2<7>(msg, idx); idx += 1<<(7-1); break;
+		case (2<<5)+8: node2<8>(msg, idx); idx += 1<<(8-1); break;
+		case (2<<5)+9: node2<9>(msg, idx); idx += 1<<(9-1); break;
+		case (2<<5)+10: node2<10>(msg, idx); idx += 1<<(10-1); break;
+		case (2<<5)+11: node2<11>(msg, idx); idx += 1<<(11-1); break;
+		case (2<<5)+12: node2<12>(msg, idx); idx += 1<<(12-1); break;
+		case (2<<5)+13: node2<13>(msg, idx); idx += 1<<(13-1); break;
+		case (2<<5)+14: node2<14>(msg, idx); idx += 1<<(14-1); break;
+		case (2<<5)+15: node2<15>(msg, idx); idx += 1<<(15-1); break;
+		case (2<<5)+16: node2<16>(msg, idx); idx += 1<<(16-1); break;
+		case (2<<5)+17: node2<17>(msg, idx); idx += 1<<(17-1); break;
+		case (2<<5)+18: node2<18>(msg, idx); idx += 1<<(18-1); break;
+		case (2<<5)+19: node2<19>(msg, idx); idx += 1<<(19-1); break;
+		case (2<<5)+20: node2<20>(msg, idx); idx += 1<<(20-1); break;
+		case (2<<5)+21: node2<21>(msg, idx); idx += 1<<(21-1); break;
+		case (2<<5)+22: node2<22>(msg, idx); idx += 1<<(22-1); break;
+		case (2<<5)+23: node2<23>(msg, idx); idx += 1<<(23-1); break;
+		case (2<<5)+24: node2<24>(msg, idx); idx += 1<<(24-1); break;
+		case (2<<5)+25: node2<25>(msg, idx); idx += 1<<(25-1); break;
+		case (2<<5)+26: node2<26>(msg, idx); idx += 1<<(26-1); break;
+		case (2<<5)+27: node2<27>(msg, idx); idx += 1<<(27-1); break;
+		case (2<<5)+28: node2<28>(msg, idx); idx += 1<<(28-1); break;
+		case (2<<5)+29: node2<29>(msg, idx); idx += 1<<(29-1); break;
+		case (2<<5)+30: node2<30>(msg, idx); idx += 1<<(30-1); break;
+		case (2<<5)+31: node2<31>(msg, idx); idx += 1<<(31-1); break;
+		case (3<<5)+3: idx -= 1<<(3-1); node3<3>(msg, idx); break;
+		case (3<<5)+4: idx -= 1<<(4-1); node3<4>(msg, idx); break;
+		case (3<<5)+5: idx -= 1<<(5-1); node3<5>(msg, idx); break;
+		case (3<<5)+6: idx -= 1<<(6-1); node3<6>(msg, idx); break;
+		case (3<<5)+7: idx -= 1<<(7-1); node3<7>(msg, idx); break;
+		case (3<<5)+8: idx -= 1<<(8-1); node3<8>(msg, idx); break;
+		case (3<<5)+9: idx -= 1<<(9-1); node3<9>(msg, idx); break;
+		case (3<<5)+10: idx -= 1<<(10-1); node3<10>(msg, idx); break;
+		case (3<<5)+11: idx -= 1<<(11-1); node3<11>(msg, idx); break;
+		case (3<<5)+12: idx -= 1<<(12-1); node3<12>(msg, idx); break;
+		case (3<<5)+13: idx -= 1<<(13-1); node3<13>(msg, idx); break;
+		case (3<<5)+14: idx -= 1<<(14-1); node3<14>(msg, idx); break;
+		case (3<<5)+15: idx -= 1<<(15-1); node3<15>(msg, idx); break;
+		case (3<<5)+16: idx -= 1<<(16-1); node3<16>(msg, idx); break;
+		case (3<<5)+17: idx -= 1<<(17-1); node3<17>(msg, idx); break;
+		case (3<<5)+18: idx -= 1<<(18-1); node3<18>(msg, idx); break;
+		case (3<<5)+19: idx -= 1<<(19-1); node3<19>(msg, idx); break;
+		case (3<<5)+20: idx -= 1<<(20-1); node3<20>(msg, idx); break;
+		case (3<<5)+21: idx -= 1<<(21-1); node3<21>(msg, idx); break;
+		case (3<<5)+22: idx -= 1<<(22-1); node3<22>(msg, idx); break;
+		case (3<<5)+23: idx -= 1<<(23-1); node3<23>(msg, idx); break;
+		case (3<<5)+24: idx -= 1<<(24-1); node3<24>(msg, idx); break;
+		case (3<<5)+25: idx -= 1<<(25-1); node3<25>(msg, idx); break;
+		case (3<<5)+26: idx -= 1<<(26-1); node3<26>(msg, idx); break;
+		case (3<<5)+27: idx -= 1<<(27-1); node3<27>(msg, idx); break;
+		case (3<<5)+28: idx -= 1<<(28-1); node3<28>(msg, idx); break;
+		case (3<<5)+29: idx -= 1<<(29-1); node3<29>(msg, idx); break;
+		case (3<<5)+30: idx -= 1<<(30-1); node3<30>(msg, idx); break;
+		case (3<<5)+31: idx -= 1<<(31-1); node3<31>(msg, idx); break;
+		case (4<<5)+3: rate0<3>(msg, idx); break;
+		case (4<<5)+4: rate0<4>(msg, idx); break;
+		case (4<<5)+5: rate0<5>(msg, idx); break;
+		case (4<<5)+6: rate0<6>(msg, idx); break;
+		case (4<<5)+7: rate0<7>(msg, idx); break;
+		case (4<<5)+8: rate0<8>(msg, idx); break;
+		case (4<<5)+9: rate0<9>(msg, idx); break;
+		case (4<<5)+10: rate0<10>(msg, idx); break;
+		case (4<<5)+11: rate0<11>(msg, idx); break;
+		case (4<<5)+12: rate0<12>(msg, idx); break;
+		case (4<<5)+13: rate0<13>(msg, idx); break;
+		case (4<<5)+14: rate0<14>(msg, idx); break;
+		case (4<<5)+15: rate0<15>(msg, idx); break;
+		case (4<<5)+16: rate0<16>(msg, idx); break;
+		case (4<<5)+17: rate0<17>(msg, idx); break;
+		case (4<<5)+18: rate0<18>(msg, idx); break;
+		case (4<<5)+19: rate0<19>(msg, idx); break;
+		case (4<<5)+20: rate0<20>(msg, idx); break;
+		case (4<<5)+21: rate0<21>(msg, idx); break;
+		case (4<<5)+22: rate0<22>(msg, idx); break;
+		case (4<<5)+23: rate0<23>(msg, idx); break;
+		case (4<<5)+24: rate0<24>(msg, idx); break;
+		case (4<<5)+25: rate0<25>(msg, idx); break;
+		case (4<<5)+26: rate0<26>(msg, idx); break;
+		case (4<<5)+27: rate0<27>(msg, idx); break;
+		case (4<<5)+28: rate0<28>(msg, idx); break;
+		case (4<<5)+29: rate0<29>(msg, idx); break;
+		case (4<<5)+30: rate0<30>(msg, idx); break;
+		case (4<<5)+31: rate0<31>(msg, idx); break;
+		case (5<<5)+3: rate1<3>(msg, idx); break;
+		case (5<<5)+4: rate1<4>(msg, idx); break;
+		case (5<<5)+5: rate1<5>(msg, idx); break;
+		case (5<<5)+6: rate1<6>(msg, idx); break;
+		case (5<<5)+7: rate1<7>(msg, idx); break;
+		case (5<<5)+8: rate1<8>(msg, idx); break;
+		case (5<<5)+9: rate1<9>(msg, idx); break;
+		case (5<<5)+10: rate1<10>(msg, idx); break;
+		case (5<<5)+11: rate1<11>(msg, idx); break;
+		case (5<<5)+12: rate1<12>(msg, idx); break;
+		case (5<<5)+13: rate1<13>(msg, idx); break;
+		case (5<<5)+14: rate1<14>(msg, idx); break;
+		case (5<<5)+15: rate1<15>(msg, idx); break;
+		case (5<<5)+16: rate1<16>(msg, idx); break;
+		case (5<<5)+17: rate1<17>(msg, idx); break;
+		case (5<<5)+18: rate1<18>(msg, idx); break;
+		case (5<<5)+19: rate1<19>(msg, idx); break;
+		case (5<<5)+20: rate1<20>(msg, idx); break;
+		case (5<<5)+21: rate1<21>(msg, idx); break;
+		case (5<<5)+22: rate1<22>(msg, idx); break;
+		case (5<<5)+23: rate1<23>(msg, idx); break;
+		case (5<<5)+24: rate1<24>(msg, idx); break;
+		case (5<<5)+25: rate1<25>(msg, idx); break;
+		case (5<<5)+26: rate1<26>(msg, idx); break;
+		case (5<<5)+27: rate1<27>(msg, idx); break;
+		case (5<<5)+28: rate1<28>(msg, idx); break;
+		case (5<<5)+29: rate1<29>(msg, idx); break;
+		case (5<<5)+30: rate1<30>(msg, idx); break;
+		case (5<<5)+31: rate1<31>(msg, idx); break;
 		default:
 			assert(false);
 		}
 	}
 public:
-	void operator()(int8_t *message, const int8_t *codeword, const uint32_t *program)
+	void operator()(int8_t *message, const int8_t *codeword, const uint8_t *program)
 	{
 		for (int i = 0; i < N; ++i)
 			soft[i+N] = codeword[i];
-		while (*program != 0xffffffff) {
-			int func = *program >> 24;
-			int index = (*program & 0x00ffffff) << U;
-			decode(&message, func, index);
-			++program;
-		};
+		idx = 0;
+		while (*program != 255)
+			decode(&message, *program++);
 	}
 };
 
@@ -862,7 +860,7 @@ int main()
 	auto message = new int8_t[K];
 	auto decoded = new int8_t[K];
 	PolarEncoder<M> encode;
-	auto program = new uint32_t[N];
+	auto program = new uint8_t[N];
 	PolarCompiler<M> compile;
 	compile(program, frozen);
 	std::cerr << "sizeof(PolarDecoder<M>) = " << sizeof(PolarDecoder<M>) << std::endl;
