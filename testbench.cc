@@ -120,10 +120,8 @@ int popcnt(TYPE x)
 	return cnt;
 }
 
-template <int M>
 class PolarCompiler
 {
-	static const int N = 1 << M;
 	static const int U = 2;
 	static uint8_t leaf(int frozen)
 	{
@@ -180,19 +178,20 @@ class PolarCompiler
 		}
 	}
 public:
-	int operator()(uint8_t *program, const uint8_t *frozen)
+	int operator()(uint8_t *program, const uint8_t *frozen, int level)
 	{
 		uint8_t *first = program;
-		compile(&program, frozen, M);
+		*program++ = level;
+		compile(&program, frozen, level);
 		*program++ = 255;
 		return program - first;
 	}
 };
 
-template <int M>
+template <int MAX_M>
 class PolarDecoder
 {
-	static const int N = 1 << M;
+	static const int MAX_N = 1 << MAX_M;
 	static const int U = 2;
 	static int8_t signum(int8_t v)
 	{
@@ -624,7 +623,7 @@ class PolarDecoder
 	template <int level>
 	void left(int8_t **, int)
 	{
-		assert(level <= M);
+		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
 			soft[i+length/2] = prod(soft[i+length], soft[i+length/2+length]);
@@ -632,7 +631,7 @@ class PolarDecoder
 	template <int level>
 	void right(int8_t **, int index)
 	{
-		assert(level <= M);
+		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
 			soft[i+length/2] = madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
@@ -640,7 +639,7 @@ class PolarDecoder
 	template <int level>
 	void combine(int8_t **, int index)
 	{
-		assert(level <= M);
+		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
 			hard[index+i] *= hard[index+i+length/2];
@@ -648,7 +647,7 @@ class PolarDecoder
 	template <int level>
 	void rate0(int8_t **, int index)
 	{
-		assert(level <= M);
+		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = 1;
@@ -656,7 +655,7 @@ class PolarDecoder
 	template <int level>
 	void rate1(int8_t **msg, int index)
 	{
-		assert(level <= M);
+		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = signum(soft[i+length]);
@@ -671,13 +670,16 @@ class PolarDecoder
 		for (int i = 0; i < length; ++i)
 			*(*msg)++ = soft[i];
 	}
-	int8_t soft[2*N];
-	int8_t hard[N];
+	int8_t soft[2*MAX_N];
+	int8_t hard[MAX_N];
 public:
 	void operator()(int8_t *message, const int8_t *codeword, const uint8_t *program)
 	{
-		for (int i = 0; i < N; ++i)
-			soft[i+N] = codeword[i];
+		int level = *program++;
+		assert(level <= MAX_M);
+		int length = 1 << level;
+		for (int i = 0; i < length; ++i)
+			soft[i+length] = codeword[i];
 		int idx = 0;
 		int8_t **msg = &message;
 		while (*program != 255) {
@@ -871,8 +873,8 @@ int main()
 	auto decoded = new int8_t[K];
 	PolarEncoder<M> encode;
 	auto program = new uint8_t[N];
-	PolarCompiler<M> compile;
-	int length = compile(program, frozen);
+	PolarCompiler compile;
+	int length = compile(program, frozen, M);
 	std::cerr << "program length = " << length << std::endl;
 	std::cerr << "sizeof(PolarDecoder<M>) = " << sizeof(PolarDecoder<M>) << std::endl;
 	auto decode = new PolarDecoder<M>;
