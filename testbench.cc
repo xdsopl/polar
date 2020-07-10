@@ -649,14 +649,15 @@ class PolarDecoder
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = signum(soft[i+length]);
 		for (int i = 0; i < length; i += 2) {
-			(*msg)[i] = hard[index+i] * hard[index+i+1];
-			(*msg)[i+1] = hard[index+i+1];
+			soft[i] = hard[index+i] * hard[index+i+1];
+			soft[i+1] = hard[index+i+1];
 		}
 		for (int h = 2; h < length; h *= 2)
 			for (int i = 0; i < length; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					(*msg)[j] *= (*msg)[j+h];
-		*msg += length;
+					soft[j] *= soft[j+h];
+		for (int i = 0; i < length; ++i)
+			*(*msg)++ = soft[i];
 	}
 	int8_t soft[2*N];
 	int8_t hard[N];
