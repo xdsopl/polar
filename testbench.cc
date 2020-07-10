@@ -82,10 +82,8 @@ public:
 	}
 };
 
-template <int M>
 class PolarFreezer
 {
-	static const int N = 1 << M;
 	static const int U = 2;
 	static void freeze(uint8_t *bits, double pe, double th, int i, int h)
 	{
@@ -97,13 +95,14 @@ class PolarFreezer
 		}
 	}
 public:
-	int operator()(uint8_t *frozen_bits, double erasure_probability = 0.5, double freezing_threshold = 0.5)
+	int operator()(uint8_t *frozen_bits, int level, double erasure_probability = 0.5, double freezing_threshold = 0.5)
 	{
-		for (int i = 0; i < N>>U; ++i)
+		int length = 1 << level;
+		for (int i = 0; i < 1<<(level-U); ++i)
 			frozen_bits[i] = 0;
-		freeze(frozen_bits, erasure_probability, freezing_threshold, 0, N / 2);
+		freeze(frozen_bits, erasure_probability, freezing_threshold, 0, length / 2);
 		int K = 0;
-		for (int i = 0; i < N; ++i)
+		for (int i = 0; i < length; ++i)
 			K += !(frozen_bits[i>>U]&(1<<(i&((1<<U)-1))));
 		return K;
 	}
@@ -864,10 +863,10 @@ int main()
 	auto data = std::bind(distribution(0, 1), generator(rd()));
 	auto frozen = new uint8_t[N>>U];
 	auto codeword = new int8_t[N];
-	PolarFreezer<M> freeze;
+	PolarFreezer freeze;
 	double erasure_probability = 0.5;
 	double freezing_threshold = 0.5;
-	int K = freeze(frozen, erasure_probability, freezing_threshold);
+	int K = freeze(frozen, M, erasure_probability, freezing_threshold);
 	std::cerr << "Polar(" << N << ", " << K << ")" << std::endl;
 	auto message = new int8_t[K];
 	auto decoded = new int8_t[K];
