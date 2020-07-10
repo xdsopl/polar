@@ -168,12 +168,12 @@ class PolarCompiler
 		}
 	}
 public:
-	void operator()(uint8_t *program, const uint8_t *frozen)
+	int operator()(uint8_t *program, const uint8_t *frozen)
 	{
 		uint8_t *first = program;
 		compile(&program, frozen, M);
 		*program++ = 255;
-		std::cerr << "program length = " << program - first << std::endl;
+		return program - first;
 	}
 };
 
@@ -860,7 +860,8 @@ int main()
 	PolarEncoder<M> encode;
 	auto program = new uint8_t[N];
 	PolarCompiler<M> compile;
-	compile(program, frozen);
+	int length = compile(program, frozen);
+	std::cerr << "program length = " << length << std::endl;
 	std::cerr << "sizeof(PolarDecoder<M>) = " << sizeof(PolarDecoder<M>) << std::endl;
 	auto decode = new PolarDecoder<M>;
 
