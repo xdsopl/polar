@@ -252,14 +252,18 @@ class PolarDecoder
 		int8_t hard1 = signum(soft[(1<<U)+1]);
 		int8_t hard2 = signum(soft[(1<<U)+2]);
 		int8_t hard3 = signum(soft[(1<<U)+3]);
-		*(*msg)++ = hard0 * hard1 * hard2 * hard3;
-		*(*msg)++ = hard1 * hard3;
-		*(*msg)++ = hard2 * hard3;
-		*(*msg)++ = hard3;
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
+		hard0 *= hard1;
+		hard2 *= hard3;
+		hard0 *= hard2;
+		hard1 *= hard3;
+		*(*msg)++ = hard0;
+		*(*msg)++ = hard1;
+		*(*msg)++ = hard2;
+		*(*msg)++ = hard3;
 #endif
 	}
 	void leaf1(int8_t **msg, int index)
