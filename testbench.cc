@@ -11,75 +11,172 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 #include <iostream>
 #include <functional>
 
-template <int M>
+template <typename TYPE>
+struct PolarHelper
+{
+	static TYPE one()
+	{
+		return 1;
+	}
+	static TYPE zero()
+	{
+		return 0;
+	}
+	static TYPE signum(TYPE v)
+	{
+		return (v > 0) - (v < 0);
+	}
+	template <typename IN>
+	static TYPE quant(IN in)
+	{
+		return in;
+	}
+	static TYPE qabs(TYPE a)
+	{
+		return std::abs(a);
+	}
+	static TYPE qmin(TYPE a, TYPE b)
+	{
+		return std::min(a, b);
+	}
+	static TYPE qadd(TYPE a, TYPE b)
+	{
+		return a + b;
+	}
+	static TYPE qmul(TYPE a, TYPE b)
+	{
+		return a * b;
+	}
+	static TYPE prod(TYPE a, TYPE b)
+	{
+		return signum(a) * signum(b) * qmin(qabs(a), qabs(b));
+	}
+	static TYPE madd(TYPE a, TYPE b, TYPE c)
+	{
+		return a * b + c;
+	}
+};
+
+template <>
+struct PolarHelper<int8_t>
+{
+	static int8_t one()
+	{
+		return 1;
+	}
+	static int8_t zero()
+	{
+		return 0;
+	}
+	static int8_t signum(int8_t v)
+	{
+		return (v > 0) - (v < 0);
+	}
+	template <typename IN>
+	static int8_t quant(IN in)
+	{
+		return std::min<IN>(std::max<IN>(std::nearbyint(in), -128), 127);
+	}
+	static int8_t qabs(int8_t a)
+	{
+		return std::abs(std::max<int8_t>(a, -127));
+	}
+	static int8_t qmin(int8_t a, int8_t b)
+	{
+		return std::min(a, b);
+	}
+	static int8_t qadd(int8_t a, int8_t b)
+	{
+		return std::min<int16_t>(std::max<int16_t>(int16_t(a) + int16_t(b), -128), 127);
+	}
+	static int8_t qmul(int8_t a, int8_t b)
+	{
+		// return std::min<int16_t>(std::max<int16_t>(int16_t(a) * int16_t(b), -128), 127);
+		// only used for hard decision values anyway
+		return a * b;
+	}
+	static int8_t prod(int8_t a, int8_t b)
+	{
+		return signum(a) * signum(b) * qmin(qabs(a), qabs(b));
+	}
+	static int8_t madd(int8_t a, int8_t b, int8_t c)
+	{
+		return std::min<int16_t>(std::max<int16_t>(int16_t(a) * int16_t(b) + int16_t(c), -128), 127);
+	}
+};
+
+template <typename TYPE, int M>
 class PolarTransform
 {
 	static const int N = 1 << M;
+	typedef PolarHelper<TYPE> PH;
 public:
-	void operator()(int8_t *output, const int8_t *input)
+	void operator()(TYPE *output, const TYPE *input)
 	{
 		for (int i = 0; i < N; i += 2) {
-			int in0 = input[i];
-			int in1 = input[i+1];
-			output[i] = in0 * in1;
+			TYPE in0 = input[i];
+			TYPE in1 = input[i+1];
+			output[i] = PH::qmul(in0, in1);
 			output[i+1] = in1;
 		}
 		for (int h = 2; h < N; h *= 2)
 			for (int i = 0; i < N; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					output[j] *= output[j+h];
+					output[j] = PH::qmul(output[j], output[j+h]);
 	}
 };
 
-template <int M>
+template <typename TYPE, int M>
 class PolarEncoder
 {
 	static const int N = 1 << M;
 	static const int U = 2;
+	typedef PolarHelper<TYPE> PH;
 public:
-	void operator()(int8_t *codeword, const int8_t *message, const uint8_t *frozen)
+	void operator()(TYPE *codeword, const TYPE *message, const uint8_t *frozen)
 	{
 		for (int i = 0; i < N; i += 2) {
-			int msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? 1 : *message++;
-			int msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? 1 : *message++;
-			codeword[i] = msg0 * msg1;
+			TYPE msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? PH::one() : *message++;
+			TYPE msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? PH::one() : *message++;
+			codeword[i] = PH::qmul(msg0, msg1);
 			codeword[i+1] = msg1;
 		}
 		for (int h = 2; h < N; h *= 2)
 			for (int i = 0; i < N; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					codeword[j] *= codeword[j+h];
+					codeword[j] = PH::qmul(codeword[j], codeword[j+h]);
 	}
 };
 
-template <int M>
+template <typename TYPE, int M>
 class PolarSysEnc
 {
 	static const int N = 1 << M;
 	static const int U = 2;
+	typedef PolarHelper<TYPE> PH;
 public:
-	void operator()(int8_t *codeword, const int8_t *message, const uint8_t *frozen)
+	void operator()(TYPE *codeword, const TYPE *message, const uint8_t *frozen)
 	{
 		for (int i = 0; i < N; i += 2) {
-			int msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? 1 : *message++;
-			int msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? 1 : *message++;
-			codeword[i] = msg0 * msg1;
+			TYPE msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? PH::one() : *message++;
+			TYPE msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? PH::one() : *message++;
+			codeword[i] = PH::qmul(msg0, msg1);
 			codeword[i+1] = msg1;
 		}
 		for (int h = 2; h < N; h *= 2)
 			for (int i = 0; i < N; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					codeword[j] *= codeword[j+h];
+					codeword[j] = PH::qmul(codeword[j], codeword[j+h]);
 		for (int i = 0; i < N; i += 2) {
-			int msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? 1 : codeword[i];
-			int msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? 1 : codeword[i+1];
-			codeword[i] = msg0 * msg1;
+			TYPE msg0 = frozen[i>>U]&(1<<(i&((1<<U)-1))) ? PH::one() : codeword[i];
+			TYPE msg1 = frozen[(i+1)>>U]&(1<<((i+1)&((1<<U)-1))) ? PH::one() : codeword[i+1];
+			codeword[i] = PH::qmul(msg0, msg1);
 			codeword[i+1] = msg1;
 		}
 		for (int h = 2; h < N; h *= 2)
 			for (int i = 0; i < N; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					codeword[j] *= codeword[j+h];
+					codeword[j] = PH::qmul(codeword[j], codeword[j+h]);
 	}
 };
 
@@ -237,278 +334,256 @@ public:
 	}
 };
 
-template <int MAX_M>
+template <typename TYPE, int MAX_M>
 class PolarDecoder
 {
 	static const int U = 2;
-	static int8_t signum(int8_t v)
-	{
-		return (v > 0) - (v < 0);
-	}
-	static int8_t qabs(int8_t a)
-	{
-		return std::abs(std::max<int8_t>(a, -127));
-	}
-	static int8_t qadd(int8_t a, int8_t b)
-	{
-		return std::min<int16_t>(std::max<int16_t>(int16_t(a) + int16_t(b), -128), 127);
-	}
-	static int8_t qmul(int8_t a, int8_t b)
-	{
-		return std::min<int16_t>(std::max<int16_t>(int16_t(a) * int16_t(b), -128), 127);
-	}
-	static int8_t prod(int8_t a, int8_t b)
-	{
-		return signum(a) * signum(b) * std::min(qabs(a), qabs(b));
-	}
-	static int8_t madd(int8_t a, int8_t b, int8_t c)
-	{
-		return qadd(qmul(a, b), c);
-	}
-	void leaf0(int8_t **msg, int index)
+	typedef PolarHelper<TYPE> PH;
+
+	void leaf0(TYPE **msg, int index)
 	{
 #if 0
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t soft01 = madd(hard0, soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft01 = PH::madd(hard0, soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t soft03 = madd(hard2, soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		TYPE soft03 = PH::madd(hard2, soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 #else
-		int8_t hard0 = signum(soft[(1<<U)+0]);
-		int8_t hard1 = signum(soft[(1<<U)+1]);
-		int8_t hard2 = signum(soft[(1<<U)+2]);
-		int8_t hard3 = signum(soft[(1<<U)+3]);
+		TYPE hard0 = PH::signum(soft[(1<<U)+0]);
+		TYPE hard1 = PH::signum(soft[(1<<U)+1]);
+		TYPE hard2 = PH::signum(soft[(1<<U)+2]);
+		TYPE hard3 = PH::signum(soft[(1<<U)+3]);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
-		hard0 *= hard1;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard0 = PH::qmul(hard0, hard1);
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		*(*msg)++ = hard0;
 		*(*msg)++ = hard1;
 		*(*msg)++ = hard2;
 		*(*msg)++ = hard3;
 #endif
 	}
-	void leaf1(int8_t **msg, int index)
+	void leaf1(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t hard0 = 1;
-		int8_t soft01 = qadd(soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE hard0 = PH::one();
+		TYPE soft01 = PH::qadd(soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t soft03 = madd(hard2, soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		TYPE soft03 = PH::madd(hard2, soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf2(int8_t **msg, int index)
+	void leaf2(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t hard1 = 1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		TYPE hard1 = PH::one();
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t soft03 = madd(hard2, soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		TYPE soft03 = PH::madd(hard2, soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf3(int8_t **msg, int index)
+	void leaf3(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t hard0 = 1;
-		int8_t hard1 = 1;
-		int8_t soft12 = qadd(soft20, soft22);
-		int8_t soft13 = qadd(soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE hard0 = PH::one();
+		TYPE hard1 = PH::one();
+		TYPE soft12 = PH::qadd(soft20, soft22);
+		TYPE soft13 = PH::qadd(soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t soft03 = madd(hard2, soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		TYPE soft03 = PH::madd(hard2, soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf4(int8_t **msg, int index)
+	void leaf4(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t soft01 = madd(hard0, soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft01 = PH::madd(hard0, soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t hard2 = 1;
-		int8_t soft03 = qadd(soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE hard2 = PH::one();
+		TYPE soft03 = PH::qadd(soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf5(int8_t **msg, int index)
+	void leaf5(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t hard0 = 1;
-		int8_t soft01 = qadd(soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE hard0 = PH::one();
+		TYPE soft01 = PH::qadd(soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t hard2 = 1;
-		int8_t soft03 = qadd(soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE hard2 = PH::one();
+		TYPE soft03 = PH::qadd(soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf6(int8_t **msg, int index)
+	void leaf6(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t hard1 = 1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t hard2 = 1;
-		int8_t soft03 = qadd(soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		TYPE hard1 = PH::one();
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE hard2 = PH::one();
+		TYPE soft03 = PH::qadd(soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf7(int8_t **msg, int index)
+	void leaf7(TYPE **msg, int index)
 	{
 #if 0
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t hard0 = 1;
-		int8_t hard1 = 1;
-		int8_t soft12 = qadd(soft20, soft22);
-		int8_t soft13 = qadd(soft21, soft23);
-		int8_t hard2 = 1;
-		int8_t soft03 = qadd(soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE hard0 = PH::one();
+		TYPE hard1 = PH::one();
+		TYPE soft12 = PH::qadd(soft20, soft22);
+		TYPE soft13 = PH::qadd(soft21, soft23);
+		TYPE hard2 = PH::one();
+		TYPE soft03 = PH::qadd(soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
-		hard2 *= hard3;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		hard2 = PH::qmul(hard2, hard3);
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 #else
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft12 = qadd(soft20, soft22);
-		int8_t soft13 = qadd(soft21, soft23);
-		int8_t soft03 = qadd(soft12, soft13);
-		int8_t hard3 = signum(soft03);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft12 = PH::qadd(soft20, soft22);
+		TYPE soft13 = PH::qadd(soft21, soft23);
+		TYPE soft03 = PH::qadd(soft12, soft13);
+		TYPE hard3 = PH::signum(soft03);
 		*(*msg)++ = hard3;
 		hard[index+0] = hard3;
 		hard[index+1] = hard3;
@@ -516,212 +591,212 @@ class PolarDecoder
 		hard[index+3] = hard3;
 #endif
 	}
-	void leaf8(int8_t **msg, int index)
+	void leaf8(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t soft01 = madd(hard0, soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft01 = PH::madd(hard0, soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t hard3 = 1;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		TYPE hard3 = PH::one();
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf9(int8_t **msg, int index)
+	void leaf9(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t hard0 = 1;
-		int8_t soft01 = qadd(soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE hard0 = PH::one();
+		TYPE soft01 = PH::qadd(soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t hard3 = 1;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		TYPE hard3 = PH::one();
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf10(int8_t **msg, int index)
+	void leaf10(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t hard1 = 1;
-		int8_t soft12 = madd(hard0, soft20, soft22);
-		int8_t soft13 = madd(hard1, soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		TYPE hard1 = PH::one();
+		TYPE soft12 = PH::madd(hard0, soft20, soft22);
+		TYPE soft13 = PH::madd(hard1, soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t hard3 = 1;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		TYPE hard3 = PH::one();
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf11(int8_t **msg, int index)
+	void leaf11(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t hard0 = 1;
-		int8_t hard1 = 1;
-		int8_t soft12 = qadd(soft20, soft22);
-		int8_t soft13 = qadd(soft21, soft23);
-		int8_t soft02 = prod(soft12, soft13);
-		int8_t hard2 = signum(soft02);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE hard0 = PH::one();
+		TYPE hard1 = PH::one();
+		TYPE soft12 = PH::qadd(soft20, soft22);
+		TYPE soft13 = PH::qadd(soft21, soft23);
+		TYPE soft02 = PH::prod(soft12, soft13);
+		TYPE hard2 = PH::signum(soft02);
 		*(*msg)++ = hard2;
-		int8_t hard3 = 1;
-		hard0 *= hard2;
-		hard1 *= hard3;
+		TYPE hard3 = PH::one();
+		hard0 = PH::qmul(hard0, hard2);
+		hard1 = PH::qmul(hard1, hard3);
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf12(int8_t **msg, int index)
+	void leaf12(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t soft01 = madd(hard0, soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft01 = PH::madd(hard0, soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t hard2 = 1;
-		int8_t hard3 = 1;
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE hard2 = PH::one();
+		TYPE hard3 = PH::one();
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf13(int8_t **msg, int index)
+	void leaf13(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t hard0 = 1;
-		int8_t soft01 = qadd(soft10, soft11);
-		int8_t hard1 = signum(soft01);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE hard0 = PH::one();
+		TYPE soft01 = PH::qadd(soft10, soft11);
+		TYPE hard1 = PH::signum(soft01);
 		*(*msg)++ = hard1;
-		hard0 *= hard1;
-		int8_t hard2 = 1;
-		int8_t hard3 = 1;
+		hard0 = PH::qmul(hard0, hard1);
+		TYPE hard2 = PH::one();
+		TYPE hard3 = PH::one();
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf14(int8_t **msg, int index)
+	void leaf14(TYPE **msg, int index)
 	{
-		int8_t soft20 = soft[(1<<U)+0];
-		int8_t soft21 = soft[(1<<U)+1];
-		int8_t soft22 = soft[(1<<U)+2];
-		int8_t soft23 = soft[(1<<U)+3];
-		int8_t soft10 = prod(soft20, soft22);
-		int8_t soft11 = prod(soft21, soft23);
-		int8_t soft00 = prod(soft10, soft11);
-		int8_t hard0 = signum(soft00);
+		TYPE soft20 = soft[(1<<U)+0];
+		TYPE soft21 = soft[(1<<U)+1];
+		TYPE soft22 = soft[(1<<U)+2];
+		TYPE soft23 = soft[(1<<U)+3];
+		TYPE soft10 = PH::prod(soft20, soft22);
+		TYPE soft11 = PH::prod(soft21, soft23);
+		TYPE soft00 = PH::prod(soft10, soft11);
+		TYPE hard0 = PH::signum(soft00);
 		*(*msg)++ = hard0;
-		int8_t hard1 = 1;
-		int8_t hard2 = 1;
-		int8_t hard3 = 1;
+		TYPE hard1 = PH::one();
+		TYPE hard2 = PH::one();
+		TYPE hard3 = PH::one();
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
-	void leaf15(int8_t **, int index)
+	void leaf15(TYPE **, int index)
 	{
-		int8_t hard0 = 1;
-		int8_t hard1 = 1;
-		int8_t hard2 = 1;
-		int8_t hard3 = 1;
+		TYPE hard0 = PH::one();
+		TYPE hard1 = PH::one();
+		TYPE hard2 = PH::one();
+		TYPE hard3 = PH::one();
 		hard[index+0] = hard0;
 		hard[index+1] = hard1;
 		hard[index+2] = hard2;
 		hard[index+3] = hard3;
 	}
 	template <int level>
-	void left(int8_t **, int)
+	void left(TYPE **, int)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = prod(soft[i+length], soft[i+length/2+length]);
+			soft[i+length/2] = PH::prod(soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void right(int8_t **, int index)
+	void right(TYPE **, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
+			soft[i+length/2] = PH::madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void rate0_right(int8_t **, int)
+	void rate0_right(TYPE **, int)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = qadd(soft[i+length], soft[i+length/2+length]);
+			soft[i+length/2] = PH::qadd(soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void combine(int8_t **, int index)
+	void combine(TYPE **, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			hard[index+i] *= hard[index+i+length/2];
+			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+length/2]);
 	}
 	template <int level>
-	void rate0_combine(int8_t **, int index)
+	void rate0_combine(TYPE **, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -729,40 +804,40 @@ class PolarDecoder
 			hard[index+i] = hard[index+i+length/2];
 	}
 	template <int level>
-	void rate1_combine(int8_t **msg, int index)
+	void rate1_combine(TYPE **msg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			hard[index+i] *= hard[index+i+length/2] = signum(soft[i+length/2+length]);
+			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+length/2] = PH::signum(soft[i+length/2+length]));
 		for (int i = 0; i < length/2; i += 2) {
-			soft[i] = hard[index+i+length/2] * hard[index+i+1+length/2];
+			soft[i] = PH::qmul(hard[index+i+length/2], hard[index+i+1+length/2]);
 			soft[i+1] = hard[index+i+1+length/2];
 		}
 		for (int h = 2; h < length/2; h *= 2)
 			for (int i = 0; i < length; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					soft[j] *= soft[j+h];
+					soft[j] = PH::qmul(soft[j], soft[j+h]);
 		for (int i = 0; i < length/2; ++i)
 			*(*msg)++ = soft[i];
 	}
 	template <int level>
-	void rep(int8_t **msg, int index)
+	void rep(TYPE **msg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int h = length; h; h /= 2)
 			for (int i = 0; i < h/2; ++i)
-				soft[i+h/2] = qadd(soft[i+h], soft[i+h/2+h]);
-		int hardi = signum(soft[1]);
+				soft[i+h/2] = PH::qadd(soft[i+h], soft[i+h/2+h]);
+		TYPE hardi = PH::signum(soft[1]);
 		*(*msg)++ = hardi;
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = hardi;
 	}
-	int8_t soft[1U<<(MAX_M+1)];
-	int8_t hard[1U<<MAX_M];
+	TYPE soft[1U<<(MAX_M+1)];
+	TYPE hard[1U<<MAX_M];
 public:
-	void operator()(int8_t *message, const int8_t *codeword, const uint8_t *program)
+	void operator()(TYPE *message, const TYPE *codeword, const uint8_t *program)
 	{
 		int level = *program++;
 		assert(level <= MAX_M);
@@ -770,7 +845,7 @@ public:
 		for (int i = 0; i < length; ++i)
 			soft[i+length] = codeword[i];
 		int idx = 0;
-		int8_t **msg = &message;
+		TYPE **msg = &message;
 		while (*program != 255) {
 			switch (*program++) {
 			case 0: leaf0(msg, idx); break;
@@ -998,12 +1073,17 @@ int main()
 	const int N = 1 << M;
 	const int U = 2; // unrolled at level 2
 	const bool systematic = true;
+#if 1
+	typedef int8_t TYPE;
+#else
+	typedef float TYPE;
+#endif
 	std::random_device rd;
 	typedef std::default_random_engine generator;
 	typedef std::uniform_int_distribution<int> distribution;
 	auto data = std::bind(distribution(0, 1), generator(rd()));
 	auto frozen = new uint8_t[N>>U];
-	auto codeword = new int8_t[N];
+	auto codeword = new TYPE[N];
 
 	long double erasure_probability = 0.5;
 	int K = (1 - erasure_probability) * N;
@@ -1021,15 +1101,15 @@ int main()
 		delete freeze;
 	}
 	std::cerr << "Polar(" << N << ", " << K << ")" << std::endl;
-	auto message = new int8_t[K];
-	auto decoded = new int8_t[K];
-	PolarEncoder<M> encode;
+	auto message = new TYPE[K];
+	auto decoded = new TYPE[K];
+	PolarEncoder<TYPE, M> encode;
 	auto program = new uint8_t[N];
 	PolarCompiler compile;
 	int length = compile(program, frozen, M);
 	std::cerr << "program length = " << length << std::endl;
-	std::cerr << "sizeof(PolarDecoder<M>) = " << sizeof(PolarDecoder<M>) << std::endl;
-	auto decode = new PolarDecoder<M>;
+	std::cerr << "sizeof(PolarDecoder<TYPE, M>) = " << sizeof(PolarDecoder<TYPE, M>) << std::endl;
+	auto decode = new PolarDecoder<TYPE, M>;
 
 #if 0
 	auto epos = std::bind(distribution(0, N-1), generator(rd()));
@@ -1039,7 +1119,7 @@ int main()
 			message[i] = 1 - 2 * data();
 		if (systematic) {
 			if (1) {
-				PolarSysEnc<M> sysenc;
+				PolarSysEnc<TYPE, M> sysenc;
 				sysenc(codeword, message, frozen);
 			} else {
 				for (int i = 0, j = 0; i < N; ++i)
@@ -1077,8 +1157,8 @@ int main()
 		std::cout << errors << " " << erasures << " " << msec.count() << std::endl;
 	}
 #else
-	auto orig = new int8_t[N];
-	auto noisy = new int8_t[N];
+	auto orig = new TYPE[N];
+	auto noisy = new TYPE[N];
 	auto symb = new double[N];
 	double low_SNR = std::floor(design_SNR-3);
 	double high_SNR = std::ceil(design_SNR+2);
@@ -1105,7 +1185,7 @@ int main()
 
 			if (systematic) {
 				if (1) {
-					PolarSysEnc<M> sysenc;
+					PolarSysEnc<TYPE, M> sysenc;
 					sysenc(codeword, message, frozen);
 				} else {
 					for (int i = 0, j = 0; i < N; ++i)
@@ -1137,7 +1217,7 @@ int main()
 			double DIST = 2; // BPSK
 			double fact = DIST / (sigma_noise * sigma_noise);
 			for (int i = 0; i < N; ++i)
-				codeword[i] = std::min<double>(std::max<double>(std::nearbyint(fact * symb[i]), -128), 127);
+				codeword[i] = PolarHelper<TYPE>::quant(fact * symb[i]);
 
 			for (int i = 0; i < N; ++i)
 				noisy[i] = codeword[i];
