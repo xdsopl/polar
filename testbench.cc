@@ -127,17 +127,27 @@ struct PolarHelper<SIMD<int8_t, WIDTH>>
 	}
 	static TYPE qmul(TYPE a, TYPE b)
 	{
-		// return vmul(a, vmax(b, vdup<TYPE>(-127)));
-		// only used for hard decision values anyway
+#ifdef __ARM_NEON__
+		return vmul(a, b);
+#else
 		return vsign(a, b);
+#endif
 	}
 	static TYPE prod(TYPE a, TYPE b)
 	{
+#ifdef __ARM_NEON__
+		return vmul(vmul(vsignum(a), vsignum(b)), vmin(vqabs(a), vqabs(b)));
+#else
 		return vsign(vmin(vqabs(a), vqabs(b)), vsign(vsignum(a), b));
+#endif
 	}
 	static TYPE madd(TYPE a, TYPE b, TYPE c)
 	{
+#ifdef __ARM_NEON__
+		return vqadd(vmul(a, vmax(b, vdup<TYPE>(-127))), c);
+#else
 		return vqadd(vsign(vmax(b, vdup<TYPE>(-127)), a), c);
+#endif
 	}
 };
 
