@@ -109,6 +109,35 @@ public:
 	}
 };
 
+template <int MAX_M>
+class PolarCodeConst0
+{
+	static const int U = 2;
+	typedef struct { double p; int i; } Bit;
+	void compute(double pe, int i, int h)
+	{
+		if (h) {
+			compute(pe * (2-pe), i, h/2);
+			compute(pe * pe, i+h, h/2);
+		} else {
+			bits[i] = { pe, i };
+		}
+	}
+	Bit bits[1<<MAX_M];
+public:
+	void operator()(uint8_t *frozen_bits, int level, int K, double erasure_probability = std::exp(-1.))
+	{
+		assert(level <= MAX_M);
+		int length = 1 << level;
+		compute(erasure_probability, 0, length / 2);
+		std::nth_element(bits, bits+K, bits+length, [](Bit a, Bit b){ return a.p < b.p; });
+		for (int i = 0; i < 1<<(level-U); ++i)
+			frozen_bits[i] = 0;
+		for (int i = K; i < length; ++i)
+			frozen_bits[bits[i].i>>U] |= 1 << (bits[i].i&((1<<U)-1));
+	}
+};
+
 template<typename TYPE>
 int popcnt(TYPE x)
 {
@@ -925,10 +954,20 @@ int main()
 	auto data = std::bind(distribution(0, 1), generator(rd()));
 	auto frozen = new uint8_t[N>>U];
 	auto codeword = new int8_t[N];
-	PolarFreezer freeze;
+
 	double erasure_probability = 0.5;
-	double freezing_threshold = 0 ? 0.5 : std::numeric_limits<double>::epsilon();
-	int K = freeze(frozen, M, erasure_probability, freezing_threshold);
+	int K = (1 - erasure_probability) * N;
+	if (1) {
+		PolarFreezer freeze;
+		double freezing_threshold = 0 ? 0.5 : std::numeric_limits<double>::epsilon();
+		K = freeze(frozen, M, erasure_probability, freezing_threshold);
+	} else {
+		auto freeze = new PolarCodeConst0<M>;
+		std::cerr << "sizeof(PolarCodeConst0<M>) = " << sizeof(PolarCodeConst0<M>) << std::endl;
+		erasure_probability = std::exp(-1.);
+		(*freeze)(frozen, M, K, erasure_probability);
+		delete freeze;
+	}
 	std::cerr << "Polar(" << N << ", " << K << ")" << std::endl;
 	auto message = new int8_t[K];
 	auto decoded = new int8_t[K];
@@ -979,8 +1018,6 @@ int main()
 	auto orig = new int8_t[N];
 	auto noisy = new int8_t[N];
 	auto symb = new double[N];
-	if (freezing_threshold != 0.5)
-		std::cerr << "freezing_threshold not 0.5. SNR design calculations might be wrong." << std::endl;
 	double design_SNR = 10 * std::log10(-std::log(erasure_probability));
 	std::cerr << "designed for: " << design_SNR << " SNR" << std::endl;
 	double low_SNR = std::floor(design_SNR-3);
