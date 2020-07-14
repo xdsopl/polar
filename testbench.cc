@@ -985,8 +985,14 @@ int main()
 	auto orig = new int8_t[N];
 	auto noisy = new int8_t[N];
 	auto symb = new double[N];
-	double min_SNR = 20, max_mbs = 0;
-	for (double SNR = -5; SNR <= 0; SNR += 0.1) {
+	if (freezing_threshold != 0.5)
+		std::cerr << "freezing_threshold not 0.5. SNR design calculations might be wrong." << std::endl;
+	double design_SNR = 10 * std::log10(-std::log(erasure_probability));
+	std::cerr << "designed for: " << design_SNR << " SNR" << std::endl;
+	double low_SNR = std::floor(design_SNR-3);
+	double high_SNR = std::ceil(design_SNR+2);
+	double min_SNR = high_SNR, max_mbs = 0;
+	for (double SNR = low_SNR; SNR <= high_SNR; SNR += 0.1) {
 		//double mean_signal = 0;
 		double sigma_signal = 1;
 		double mean_noise = 0;
