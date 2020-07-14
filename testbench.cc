@@ -196,7 +196,6 @@ public:
 template <int MAX_M>
 class PolarDecoder
 {
-	static const int MAX_N = 1 << MAX_M;
 	static const int U = 2;
 	static int8_t signum(int8_t v)
 	{
@@ -708,8 +707,8 @@ class PolarDecoder
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = hardi;
 	}
-	int8_t soft[2*MAX_N];
-	int8_t hard[MAX_N];
+	int8_t soft[1U<<(MAX_M+1)];
+	int8_t hard[1U<<MAX_M];
 public:
 	void operator()(int8_t *message, const int8_t *codeword, const uint8_t *program)
 	{
@@ -766,7 +765,6 @@ public:
 			case (1<<5)+28: left<28>(msg, idx); break;
 			case (1<<5)+29: left<29>(msg, idx); break;
 			case (1<<5)+30: left<30>(msg, idx); break;
-			case (1<<5)+31: left<31>(msg, idx); break;
 			case (2<<5)+3: right<3>(msg, idx); idx += 1<<(3-1); break;
 			case (2<<5)+4: right<4>(msg, idx); idx += 1<<(4-1); break;
 			case (2<<5)+5: right<5>(msg, idx); idx += 1<<(5-1); break;
@@ -795,7 +793,6 @@ public:
 			case (2<<5)+28: right<28>(msg, idx); idx += 1<<(28-1); break;
 			case (2<<5)+29: right<29>(msg, idx); idx += 1<<(29-1); break;
 			case (2<<5)+30: right<30>(msg, idx); idx += 1<<(30-1); break;
-			case (2<<5)+31: right<31>(msg, idx); idx += 1<<(31-1); break;
 			case (3<<5)+3: idx -= 1<<(3-1); combine<3>(msg, idx); break;
 			case (3<<5)+4: idx -= 1<<(4-1); combine<4>(msg, idx); break;
 			case (3<<5)+5: idx -= 1<<(5-1); combine<5>(msg, idx); break;
@@ -824,7 +821,6 @@ public:
 			case (3<<5)+28: idx -= 1<<(28-1); combine<28>(msg, idx); break;
 			case (3<<5)+29: idx -= 1<<(29-1); combine<29>(msg, idx); break;
 			case (3<<5)+30: idx -= 1<<(30-1); combine<30>(msg, idx); break;
-			case (3<<5)+31: idx -= 1<<(31-1); combine<31>(msg, idx); break;
 			case (4<<5)+3: rate0<3>(msg, idx); break;
 			case (4<<5)+4: rate0<4>(msg, idx); break;
 			case (4<<5)+5: rate0<5>(msg, idx); break;
@@ -853,7 +849,6 @@ public:
 			case (4<<5)+28: rate0<28>(msg, idx); break;
 			case (4<<5)+29: rate0<29>(msg, idx); break;
 			case (4<<5)+30: rate0<30>(msg, idx); break;
-			case (4<<5)+31: rate0<31>(msg, idx); break;
 			case (5<<5)+3: rate1<3>(msg, idx); break;
 			case (5<<5)+4: rate1<4>(msg, idx); break;
 			case (5<<5)+5: rate1<5>(msg, idx); break;
@@ -882,7 +877,6 @@ public:
 			case (5<<5)+28: rate1<28>(msg, idx); break;
 			case (5<<5)+29: rate1<29>(msg, idx); break;
 			case (5<<5)+30: rate1<30>(msg, idx); break;
-			case (5<<5)+31: rate1<31>(msg, idx); break;
 			case (6<<5)+3: rep<3>(msg, idx); break;
 			case (6<<5)+4: rep<4>(msg, idx); break;
 			case (6<<5)+5: rep<5>(msg, idx); break;
@@ -911,7 +905,6 @@ public:
 			case (6<<5)+28: rep<28>(msg, idx); break;
 			case (6<<5)+29: rep<29>(msg, idx); break;
 			case (6<<5)+30: rep<30>(msg, idx); break;
-			case (6<<5)+31: rep<31>(msg, idx); break;
 			default:
 				assert(false);
 			}
