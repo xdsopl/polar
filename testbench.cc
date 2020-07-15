@@ -1023,7 +1023,8 @@ int main()
 	double low_SNR = std::floor(design_SNR-3);
 	double high_SNR = std::ceil(design_SNR+2);
 	double min_SNR = high_SNR, max_mbs = 0;
-	for (double SNR = low_SNR; SNR <= high_SNR; SNR += 0.1) {
+	int count = 0;
+	for (double SNR = low_SNR; count <= 3 && SNR <= high_SNR; SNR += 0.1, ++count) {
 		//double mean_signal = 0;
 		double sigma_signal = 1;
 		double mean_noise = 0;
@@ -1100,6 +1101,8 @@ int main()
 		double bit_error_rate = (double)(uncorrected_errors + ambiguity_erasures) / (double)(K * loops);
 		if (!uncorrected_errors && !ambiguity_erasures)
 			min_SNR = std::min(min_SNR, SNR);
+		else
+			count = 0;
 
 		if (0) {
 			std::cerr << SNR << " Es/N0 => AWGN with standard deviation of " << sigma_noise << " and mean " << mean_noise << std::endl;
