@@ -4,6 +4,7 @@ Test bench for successive cancellation decoding of polar codes on the binary era
 Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 */
 
+#include <limits>
 #include <random>
 #include <chrono>
 #include <cassert>
@@ -926,7 +927,7 @@ int main()
 	auto codeword = new int8_t[N];
 	PolarFreezer freeze;
 	double erasure_probability = 0.5;
-	double freezing_threshold = 0.5;
+	double freezing_threshold = 0 ? 0.5 : std::numeric_limits<double>::epsilon();
 	int K = freeze(frozen, M, erasure_probability, freezing_threshold);
 	std::cerr << "Polar(" << N << ", " << K << ")" << std::endl;
 	auto message = new int8_t[K];
