@@ -961,7 +961,7 @@ int main()
 	int K = (1 - erasure_probability) * N;
 	double design_SNR = 10 * std::log10(-std::log(erasure_probability));
 	std::cerr << "designed for: " << design_SNR << " SNR" << std::endl;
-	if (1) {
+	if (0) {
 		PolarFreezer freeze;
 		long double freezing_threshold = 0 ? 0.5 : std::numeric_limits<float>::epsilon();
 		K = freeze(frozen, M, erasure_probability, freezing_threshold);
