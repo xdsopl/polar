@@ -113,28 +113,30 @@ template <int MAX_M>
 class PolarCodeConst0
 {
 	static const int U = 2;
-	typedef struct { long double p; int i; } Bit;
 	void compute(long double pe, int i, int h)
 	{
 		if (h) {
 			compute(pe * (2-pe), i, h/2);
 			compute(pe * pe, i+h, h/2);
 		} else {
-			bits[i] = { pe, i };
+			prob[i] = pe;
 		}
 	}
-	Bit bits[1<<MAX_M];
+	long double prob[1<<MAX_M];
+	int index[1<<MAX_M];
 public:
 	void operator()(uint8_t *frozen_bits, int level, int K, long double erasure_probability = std::exp(-1.L))
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		compute(erasure_probability, 0, length / 2);
-		std::nth_element(bits, bits+K, bits+length, [](Bit a, Bit b){ return a.p < b.p; });
+		for (int i = 0; i < length; ++i)
+			index[i] = i;
+		std::nth_element(index, index+K, index+length, [this](int a, int b){ return prob[a] < prob[b]; });
 		for (int i = 0; i < 1<<(level-U); ++i)
 			frozen_bits[i] = 0;
 		for (int i = K; i < length; ++i)
-			frozen_bits[bits[i].i>>U] |= 1 << (bits[i].i&((1<<U)-1));
+			frozen_bits[index[i]>>U] |= 1 << (index[i]&((1<<U)-1));
 	}
 };
 
