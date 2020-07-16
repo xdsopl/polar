@@ -86,7 +86,7 @@ public:
 class PolarFreezer
 {
 	static const int U = 2;
-	static void freeze(uint8_t *bits, double pe, double th, int i, int h)
+	static void freeze(uint8_t *bits, long double pe, long double th, int i, int h)
 	{
 		if (h) {
 			freeze(bits, pe * (2-pe), th, i, h/2);
@@ -96,7 +96,7 @@ class PolarFreezer
 		}
 	}
 public:
-	int operator()(uint8_t *frozen_bits, int level, double erasure_probability = 0.5, double freezing_threshold = 0.5)
+	int operator()(uint8_t *frozen_bits, int level, long double erasure_probability = 0.5L, long double freezing_threshold = 0.5L)
 	{
 		int length = 1 << level;
 		for (int i = 0; i < 1<<(level-U); ++i)
@@ -113,8 +113,8 @@ template <int MAX_M>
 class PolarCodeConst0
 {
 	static const int U = 2;
-	typedef struct { double p; int i; } Bit;
-	void compute(double pe, int i, int h)
+	typedef struct { long double p; int i; } Bit;
+	void compute(long double pe, int i, int h)
 	{
 		if (h) {
 			compute(pe * (2-pe), i, h/2);
@@ -125,7 +125,7 @@ class PolarCodeConst0
 	}
 	Bit bits[1<<MAX_M];
 public:
-	void operator()(uint8_t *frozen_bits, int level, int K, double erasure_probability = std::exp(-1.))
+	void operator()(uint8_t *frozen_bits, int level, int K, long double erasure_probability = std::exp(-1.L))
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -955,16 +955,16 @@ int main()
 	auto frozen = new uint8_t[N>>U];
 	auto codeword = new int8_t[N];
 
-	double erasure_probability = 0.5;
+	long double erasure_probability = 0.5;
 	int K = (1 - erasure_probability) * N;
 	if (1) {
 		PolarFreezer freeze;
-		double freezing_threshold = 0 ? 0.5 : std::numeric_limits<double>::epsilon();
+		long double freezing_threshold = 0 ? 0.5 : std::numeric_limits<float>::epsilon();
 		K = freeze(frozen, M, erasure_probability, freezing_threshold);
 	} else {
 		auto freeze = new PolarCodeConst0<M>;
 		std::cerr << "sizeof(PolarCodeConst0<M>) = " << sizeof(PolarCodeConst0<M>) << std::endl;
-		erasure_probability = std::exp(-1.);
+		erasure_probability = std::exp(-1.L);
 		(*freeze)(frozen, M, K, erasure_probability);
 		delete freeze;
 	}
