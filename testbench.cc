@@ -959,6 +959,8 @@ int main()
 
 	long double erasure_probability = 0.5;
 	int K = (1 - erasure_probability) * N;
+	double design_SNR = 10 * std::log10(-std::log(erasure_probability));
+	std::cerr << "designed for: " << design_SNR << " SNR" << std::endl;
 	if (1) {
 		PolarFreezer freeze;
 		long double freezing_threshold = 0 ? 0.5 : std::numeric_limits<float>::epsilon();
@@ -966,8 +968,8 @@ int main()
 	} else {
 		auto freeze = new PolarCodeConst0<M>;
 		std::cerr << "sizeof(PolarCodeConst0<M>) = " << sizeof(PolarCodeConst0<M>) << std::endl;
-		erasure_probability = std::exp(-1.L);
-		(*freeze)(frozen, M, K, erasure_probability);
+		long double probability = std::exp(-pow(10.0, (design_SNR + 1.59175) / 10));
+		(*freeze)(frozen, M, K, probability);
 		delete freeze;
 	}
 	std::cerr << "Polar(" << N << ", " << K << ")" << std::endl;
@@ -1030,8 +1032,6 @@ int main()
 	auto orig = new int8_t[N];
 	auto noisy = new int8_t[N];
 	auto symb = new double[N];
-	double design_SNR = 10 * std::log10(-std::log(erasure_probability));
-	std::cerr << "designed for: " << design_SNR << " SNR" << std::endl;
 	double low_SNR = std::floor(design_SNR-3);
 	double high_SNR = std::ceil(design_SNR+2);
 	double min_SNR = high_SNR, max_mbs = 0;
