@@ -986,8 +986,18 @@ int main()
 		for (int i = 0; i < K; ++i)
 			message[i] = 1 - 2 * data();
 		if (systematic) {
-			PolarSysEnc<M> sysenc;
-			sysenc(codeword, message, frozen);
+			if (1) {
+				PolarSysEnc<M> sysenc;
+				sysenc(codeword, message, frozen);
+			} else {
+				for (int i = 0, j = 0; i < N; ++i)
+					if (frozen[i>>U]&(1<<(i&((1<<U)-1))))
+						codeword[i] = 0;
+					else
+						codeword[i] = message[j++];
+				(*decode)(decoded, codeword, program);
+				encode(codeword, decoded, frozen);
+			}
 			for (int i = 0, j = 0; i < N; ++i)
 				if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
 					assert(codeword[i] == message[j++]);
@@ -1044,8 +1054,18 @@ int main()
 				message[i] = 1 - 2 * data();
 
 			if (systematic) {
-				PolarSysEnc<M> sysenc;
-				sysenc(codeword, message, frozen);
+				if (1) {
+					PolarSysEnc<M> sysenc;
+					sysenc(codeword, message, frozen);
+				} else {
+					for (int i = 0, j = 0; i < N; ++i)
+						if (frozen[i>>U]&(1<<(i&((1<<U)-1))))
+							codeword[i] = 0;
+						else
+							codeword[i] = message[j++];
+					(*decode)(decoded, codeword, program);
+					encode(codeword, decoded, frozen);
+				}
 				for (int i = 0, j = 0; i < N; ++i)
 					if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
 						assert(codeword[i] == message[j++]);
