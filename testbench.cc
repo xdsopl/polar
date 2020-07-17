@@ -1126,8 +1126,14 @@ int main()
 		else
 			count = 0;
 
+		int MOD_BITS = 1; // BPSK
+		double code_rate = (double)K / (double)N;
+		double spectral_efficiency = code_rate * MOD_BITS;
+		double EbN0 = 10 * std::log10(sigma_signal * sigma_signal / (spectral_efficiency * 2 * sigma_noise * sigma_noise));
+
 		if (0) {
 			std::cerr << SNR << " Es/N0 => AWGN with standard deviation of " << sigma_noise << " and mean " << mean_noise << std::endl;
+			std::cerr << EbN0 << " Eb/N0, using spectral efficiency of " << spectral_efficiency << " from " << code_rate << " code rate and " << MOD_BITS << " bits per symbol." << std::endl;
 			std::cerr << awgn_errors << " errors caused by AWGN." << std::endl;
 			std::cerr << quantization_erasures << " erasures caused by quantization." << std::endl;
 			std::cerr << uncorrected_errors << " errors uncorrected." << std::endl;
@@ -1135,7 +1141,7 @@ int main()
 			std::cerr << bit_error_rate << " bit error rate." << std::endl;
 			std::cerr << avg_mbs << " megabit per second." << std::endl;
 		} else {
-			std::cout << SNR << " " << bit_error_rate << " " << avg_mbs << std::endl;
+			std::cout << SNR << " " << bit_error_rate << " " << avg_mbs << " " << EbN0 << std::endl;
 		}
 	}
 	std::cerr << "QEF at: " << min_SNR << " SNR, speed: " << max_mbs << " Mb/s." << std::endl;
