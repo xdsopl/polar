@@ -10,6 +10,7 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 #include <chrono>
 #include <cassert>
 #include <iostream>
+#include <algorithm>
 #include <functional>
 #include "simd.hh"
 
