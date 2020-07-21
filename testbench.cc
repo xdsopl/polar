@@ -1,5 +1,5 @@
 /*
-Test bench for successive cancellation decoding of polar codes on the binary erasure channel
+Test bench for successive cancellation decoding of polar codes
 
 Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 */
@@ -1186,6 +1186,7 @@ int main()
 	const int SIMD_WIDTH = SIZEOF_SIMD / sizeof(code_type);
 	typedef SIMD<code_type, SIMD_WIDTH> simd_type;
 #endif
+	int64_t loops = 320 / SIMD_WIDTH;
 	std::random_device rd;
 	typedef std::default_random_engine generator;
 	typedef std::uniform_int_distribution<int> distribution;
@@ -1196,7 +1197,7 @@ int main()
 	long double erasure_probability = 0.5;
 	int K = (1 - erasure_probability) * N;
 	double design_SNR = 10 * std::log10(-std::log(erasure_probability));
-	std::cerr << "designed for: " << design_SNR << " SNR" << std::endl;
+	std::cerr << "design SNR: " << design_SNR << std::endl;
 	if (0) {
 		PolarFreezer freeze;
 		long double freezing_threshold = 0 ? 0.5 : std::numeric_limits<float>::epsilon();
@@ -1204,7 +1205,9 @@ int main()
 	} else {
 		auto freeze = new PolarCodeConst0<M>;
 		std::cerr << "sizeof(PolarCodeConst0<M>) = " << sizeof(PolarCodeConst0<M>) << std::endl;
-		long double probability = std::exp(-pow(10.0, (design_SNR + 1.59175) / 10));
+		double better_SNR = design_SNR + 1.59175;
+		std::cerr << "better SNR: " << better_SNR << std::endl;
+		long double probability = std::exp(-pow(10.0, better_SNR / 10));
 		(*freeze)(frozen, M, K, probability);
 		delete freeze;
 	}
@@ -1219,63 +1222,14 @@ int main()
 	std::cerr << "sizeof(PolarDecoder<simd_type, M>) = " << sizeof(PolarDecoder<simd_type, M>) << std::endl;
 	auto decode = reinterpret_cast<PolarDecoder<simd_type, M> *>(aligned_alloc(sizeof(simd_type), sizeof(PolarDecoder<simd_type, M>)));
 
-#if 0
-	auto epos = std::bind(distribution(0, N-1), generator(rd()));
-	std::cerr << "errors erasures msec" << std::endl;
-	for (int loop = 0; loop < 100; ++loop) {
-		for (int i = 0; i < SIMD_WIDTH * K; ++i)
-			message[i] = 1 - 2 * data();
-		if (systematic) {
-			if (1) {
-				PolarSysEnc<simd_type, M> sysenc;
-				sysenc(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(message), frozen);
-			} else {
-				for (int i = 0, j = 0; i < N; ++i)
-					for (int k = 0; k < SIMD_WIDTH; ++k)
-						if (frozen[i>>U]&(1<<(i&((1<<U)-1))))
-							codeword[SIMD_WIDTH*i+k] = 0;
-						else
-							codeword[SIMD_WIDTH*i+k] = message[j++];
-				(*decode)(reinterpret_cast<simd_type *>(decoded), reinterpret_cast<simd_type *>(codeword), program);
-				encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(decoded), frozen);
-			}
-			for (int i = 0, j = 0; i < N; ++i)
-				for (int k = 0; k < SIMD_WIDTH; ++k)
-					if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
-						assert(codeword[SIMD_WIDTH*i+k] == message[j++]);
-		} else {
-			encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(message), frozen);
-		}
-		for (int i = 0; i < erasure_probability * N; ++i)
-			for (int k = 0; k < SIMD_WIDTH; ++k)
-				codeword[SIMD_WIDTH*epos()+k] = 0;
-		auto start = std::chrono::system_clock::now();
-		(*decode)(reinterpret_cast<simd_type *>(decoded), reinterpret_cast<simd_type *>(codeword), program);
-		auto end = std::chrono::system_clock::now();
-		auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-		if (systematic) {
-			encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(decoded), frozen);
-			for (int i = 0, j = 0; i < N; ++i)
-				for (int k = 0; k < SIMD_WIDTH; ++k)
-					if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
-						decoded[j++] = codeword[SIMD_WIDTH*i+k];
-		}
-		int erasures = 0;
-		for (int i = 0; i < SIMD_WIDTH * K; ++i)
-			erasures += !decoded[i];
-		int errors = 0;
-		for (int i = 0; i < SIMD_WIDTH * K; ++i)
-			errors += decoded[i] * message[i] < 0;
-		std::cout << errors << " " << erasures << " " << msec.count() << std::endl;
-	}
-#else
 	auto orig = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));
 	auto noisy = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));
 	auto symb = new double[SIMD_WIDTH*N];
 	double low_SNR = std::floor(design_SNR-3);
-	double high_SNR = std::ceil(design_SNR+2);
+	double high_SNR = std::ceil(design_SNR+5);
 	double min_SNR = high_SNR, max_mbs = 0;
 	int count = 0;
+	std::cerr << "SNR BER Mbit/s Eb/N0" << std::endl;
 	for (double SNR = low_SNR; count <= 3 && SNR <= high_SNR; SNR += 0.1, ++count) {
 		//double mean_signal = 0;
 		double sigma_signal = 1;
@@ -1289,7 +1243,6 @@ int main()
 		int64_t quantization_erasures = 0;
 		int64_t uncorrected_errors = 0;
 		int64_t ambiguity_erasures = 0;
-		int64_t loops = 10;
 		double avg_mbs = 0;
 		for (int l = 0; l < loops; ++l) {
 			for (int i = 0; i < SIMD_WIDTH * K; ++i)
@@ -1388,6 +1341,5 @@ int main()
 		}
 	}
 	std::cerr << "QEF at: " << min_SNR << " SNR, speed: " << max_mbs << " Mb/s." << std::endl;
-#endif
 	return 0;
 }
