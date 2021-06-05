@@ -15,7 +15,7 @@ all: testbench
 test: testbench
 	$(QEMU) ./testbench
 
-testbench: testbench.cc
+testbench: testbench.cc *.hh
 	$(CXX) $(CXXFLAGS) $< -o $@
 
 .PHONY: clean
