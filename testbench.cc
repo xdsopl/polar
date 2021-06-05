@@ -9,6 +9,7 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 #include <random>
 #include <chrono>
 #include <cassert>
+#include <iomanip>
 #include <iostream>
 #include <algorithm>
 #include <functional>
@@ -426,6 +427,54 @@ public:
 		compile(&program, frozen, level);
 		*program++ = 255;
 		return program - first;
+	}
+};
+
+class PolarHistogram
+{
+	static const int U = 2;
+	int hist[256];
+public:
+	void operator()(const uint8_t *program)
+	{
+		for (int i = 0; i < 256; ++i)
+			hist[i] = 0;
+		while (*program != 255)
+			++hist[*program++];
+		int top = 0;
+		for (int i = 0; i < 256; ++i)
+			top = std::max(top, hist[i]);
+		int len = 2 + std::log10(top);
+		int N = 0;
+		for (int j = 0; j < 8; ++j)
+			for (int i = N; i < 32; ++i)
+				if (hist[(j<<5)+i])
+					N = i;
+		std::cerr << std::endl << "leafN:           ";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(0<<5)+i];
+		std::cerr << std::endl << "left<N>:         ";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(1<<5)+i];
+		std::cerr << std::endl << "right<N>:        ";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(2<<5)+i];
+		std::cerr << std::endl << "rate0_right<N>:  ";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(3<<5)+i];
+		std::cerr << std::endl << "combine<N>:      ";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(4<<5)+i];
+		std::cerr << std::endl << "rate0_combine<N>:";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(5<<5)+i];
+		std::cerr << std::endl << "rate1_combine<N>:";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(6<<5)+i];
+		std::cerr << std::endl << "rep<N>:          ";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len) << hist[(7<<5)+i];
+		std::cerr << std::endl << std::endl;
 	}
 };
 
@@ -1220,6 +1269,10 @@ int main()
 	int length = compile(program, frozen, M);
 	std::cerr << "program length = " << length << std::endl;
 	std::cerr << "sizeof(PolarDecoder<simd_type, M>) = " << sizeof(PolarDecoder<simd_type, M>) << std::endl;
+	if (1) {
+		PolarHistogram histogram;
+		histogram(program);
+	}
 	auto decode = reinterpret_cast<PolarDecoder<simd_type, M> *>(aligned_alloc(sizeof(simd_type), sizeof(PolarDecoder<simd_type, M>)));
 
 	auto orig = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));
