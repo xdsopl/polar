@@ -52,33 +52,36 @@ public:
 		++program;
 		while (*program != 255)
 			++hist[*program++];
-		int top = 0;
-		for (int i = 0; i < 256; ++i)
-			top = std::max(top, hist[i]);
-		int len = 2 + std::log10(top);
+		int top[32] = { 0 };
+		for (int j = 0; j < 6; ++j)
+			for (int i = 0; i < 32; ++i)
+				top[i] = std::max(top[i], hist[(j<<5)+i]);
+		int len[32];
+		for (int i = 0; i < 32; ++i)
+			len[i] = 2 + std::log10(top[i]+!top[i]);
 		int N = 0;
 		for (int j = 0; j < 6; ++j)
 			for (int i = N; i < 32; ++i)
 				if (hist[(j<<5)+i])
 					N = i;
-		std::cerr << std::endl << "left<N>: ";
+		std::cerr << std::endl << "left: ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(0<<5)+i];
-		std::cerr << std::endl << "right<N>:";
+			std::cerr << std::setw(len[i]) << hist[(0<<5)+i];
+		std::cerr << std::endl << "right:";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(1<<5)+i];
-		std::cerr << std::endl << "comb<N>: ";
+			std::cerr << std::setw(len[i]) << hist[(1<<5)+i];
+		std::cerr << std::endl << "comb: ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(2<<5)+i];
-		std::cerr << std::endl << "rate0<N>:";
+			std::cerr << std::setw(len[i]) << hist[(2<<5)+i];
+		std::cerr << std::endl << "rate0:";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(3<<5)+i];
-		std::cerr << std::endl << "rate1<N>:";
+			std::cerr << std::setw(len[i]) << hist[(3<<5)+i];
+		std::cerr << std::endl << "rate1:";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(4<<5)+i];
-		std::cerr << std::endl << "rep<N>:  ";
+			std::cerr << std::setw(len[i]) << hist[(4<<5)+i];
+		std::cerr << std::endl << "rep:  ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(5<<5)+i];
+			std::cerr << std::setw(len[i]) << hist[(5<<5)+i];
 		std::cerr << std::endl << std::endl;
 	}
 };
