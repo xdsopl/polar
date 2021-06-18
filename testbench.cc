@@ -43,7 +43,6 @@ public:
 
 class PolarHistogram
 {
-	static const int U = 2;
 	int hist[256];
 public:
 	void operator()(const uint8_t *program)
@@ -58,31 +57,28 @@ public:
 			top = std::max(top, hist[i]);
 		int len = 2 + std::log10(top);
 		int N = 0;
-		for (int j = 0; j < 7; ++j)
+		for (int j = 0; j < 6; ++j)
 			for (int i = N; i < 32; ++i)
 				if (hist[(j<<5)+i])
 					N = i;
-		std::cerr << std::endl << "leafN:     ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(0<<5)+i];
 		std::cerr << std::endl << "left<N>:   ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(1<<5)+i];
+			std::cerr << std::setw(len) << hist[(0<<5)+i];
 		std::cerr << std::endl << "right<N>:  ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(2<<5)+i];
+			std::cerr << std::setw(len) << hist[(1<<5)+i];
 		std::cerr << std::endl << "combine<N>:";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(3<<5)+i];
+			std::cerr << std::setw(len) << hist[(2<<5)+i];
 		std::cerr << std::endl << "rate0<N>:  ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(4<<5)+i];
+			std::cerr << std::setw(len) << hist[(3<<5)+i];
 		std::cerr << std::endl << "rate1<N>:  ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(5<<5)+i];
+			std::cerr << std::setw(len) << hist[(4<<5)+i];
 		std::cerr << std::endl << "rep<N>:    ";
 		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len) << hist[(6<<5)+i];
+			std::cerr << std::setw(len) << hist[(5<<5)+i];
 		std::cerr << std::endl << std::endl;
 	}
 };
@@ -91,7 +87,6 @@ int main()
 {
 	const int M = 14;
 	const int N = 1 << M;
-	const int U = 2; // unrolled at level 2
 	const bool systematic = true;
 #if 1
 	typedef int8_t code_type;
@@ -116,7 +111,7 @@ int main()
 	typedef std::default_random_engine generator;
 	typedef std::uniform_int_distribution<int> distribution;
 	auto data = std::bind(distribution(0, 1), generator(rd()));
-	auto frozen = new uint8_t[N>>U];
+	auto frozen = new uint8_t[N];
 	auto codeword = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));
 
 	long double erasure_probability = 0.5;
@@ -184,7 +179,7 @@ int main()
 				} else {
 					for (int i = 0, j = 0; i < N; ++i)
 						for (int k = 0; k < SIMD_WIDTH; ++k)
-							if (frozen[i>>U]&(1<<(i&((1<<U)-1))))
+							if (frozen[i])
 								codeword[SIMD_WIDTH*i+k] = 0;
 							else
 								codeword[SIMD_WIDTH*i+k] = message[j++];
@@ -193,7 +188,7 @@ int main()
 				}
 				for (int i = 0, j = 0; i < N; ++i)
 					for (int k = 0; k < SIMD_WIDTH; ++k)
-						if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
+						if (!frozen[i])
 							assert(codeword[SIMD_WIDTH*i+k] == message[j++]);
 			} else {
 				encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(message), frozen);
@@ -229,7 +224,7 @@ int main()
 				encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(decoded), frozen);
 				for (int i = 0, j = 0; i < N; ++i)
 					for (int k = 0; k < SIMD_WIDTH; ++k)
-						if (!(frozen[i>>U]&(1<<(i&((1<<U)-1)))))
+						if (!frozen[i])
 							decoded[j++] = codeword[SIMD_WIDTH*i+k];
 			}
 
