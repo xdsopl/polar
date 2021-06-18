@@ -50,6 +50,7 @@ public:
 	{
 		for (int i = 0; i < 256; ++i)
 			hist[i] = 0;
+		++program;
 		while (*program != 255)
 			++hist[*program++];
 		int top = 0;
