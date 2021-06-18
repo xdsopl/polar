@@ -14,27 +14,27 @@ class PolarCompiler
 	}
 	static uint8_t left(int level)
 	{
-		return node(0, level);
+		return node(0, level - 2);
 	}
 	static uint8_t right(int level)
 	{
-		return node(1, level);
+		return node(1, level - 2);
 	}
-	static uint8_t combine(int level)
+	static uint8_t comb(int level)
 	{
-		return node(2, level);
+		return node(2, level - 2);
 	}
 	static uint8_t rate0(int level)
 	{
-		return node(3, level);
+		return node(3, level - 1);
 	}
 	static uint8_t rate1(int level)
 	{
-		return node(4, level);
+		return node(4, level - 1);
 	}
 	static uint8_t rep(int level)
 	{
-		return node(5, level);
+		return node(5, level - 1);
 	}
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
@@ -58,7 +58,7 @@ class PolarCompiler
 			compile(program, frozen, level-1);
 			*(*program)++ = right(level);
 			compile(program, frozen+(1<<(level-1)), level-1);
-			*(*program)++ = combine(level);
+			*(*program)++ = comb(level);
 		}
 	}
 public:

@@ -61,22 +61,22 @@ public:
 			for (int i = N; i < 32; ++i)
 				if (hist[(j<<5)+i])
 					N = i;
-		std::cerr << std::endl << "left<N>:   ";
+		std::cerr << std::endl << "left<N>: ";
 		for (int i = 0; i <= N; ++i)
 			std::cerr << std::setw(len) << hist[(0<<5)+i];
-		std::cerr << std::endl << "right<N>:  ";
+		std::cerr << std::endl << "right<N>:";
 		for (int i = 0; i <= N; ++i)
 			std::cerr << std::setw(len) << hist[(1<<5)+i];
-		std::cerr << std::endl << "combine<N>:";
+		std::cerr << std::endl << "comb<N>: ";
 		for (int i = 0; i <= N; ++i)
 			std::cerr << std::setw(len) << hist[(2<<5)+i];
-		std::cerr << std::endl << "rate0<N>:  ";
+		std::cerr << std::endl << "rate0<N>:";
 		for (int i = 0; i <= N; ++i)
 			std::cerr << std::setw(len) << hist[(3<<5)+i];
-		std::cerr << std::endl << "rate1<N>:  ";
+		std::cerr << std::endl << "rate1<N>:";
 		for (int i = 0; i <= N; ++i)
 			std::cerr << std::setw(len) << hist[(4<<5)+i];
-		std::cerr << std::endl << "rep<N>:    ";
+		std::cerr << std::endl << "rep<N>:  ";
 		for (int i = 0; i <= N; ++i)
 			std::cerr << std::setw(len) << hist[(5<<5)+i];
 		std::cerr << std::endl << std::endl;
