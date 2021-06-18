@@ -25,25 +25,21 @@ class PolarCompiler
 	{
 		return node(2, level);
 	}
-	static uint8_t rate0_right(int level)
+	static uint8_t combine(int level)
 	{
 		return node(3, level);
 	}
-	static uint8_t combine(int level)
+	static uint8_t rate0(int level)
 	{
 		return node(4, level);
 	}
-	static uint8_t rate0_combine(int level)
+	static uint8_t rate1(int level)
 	{
 		return node(5, level);
 	}
-	static uint8_t rate1_combine(int level)
-	{
-		return node(6, level);
-	}
 	static uint8_t rep(int level)
 	{
-		return node(7, level);
+		return node(6, level);
 	}
 	template<typename TYPE>
 	static int popcnt(TYPE x)
@@ -65,21 +61,13 @@ class PolarCompiler
 	static void compile(uint8_t **program, const uint8_t *frozen, int level)
 	{
 		if (level > U) {
-			int lcnt = frozen_count(frozen, level-1);
-			int rcnt = frozen_count(frozen+(1<<(level-1-U)), level-1);
-			assert(lcnt > 0);
-			assert(rcnt < 1<<(level-1));
-			assert(lcnt != 1<<(level-1) || rcnt != 0);
-			if (lcnt == 1<<(level-1) && rcnt == (1<<(level-1))-1 && frozen[(1<<(level-U))-1] == (1<<((1<<U)-1))-1) {
+			int count = frozen_count(frozen, level);
+			if (count == 1<<level) {
+				*(*program)++ = rate0(level);
+			} else if (count == 0) {
+				*(*program)++ = rate1(level);
+			} else if (count == (1<<level)-1 && frozen[(1<<(level-U))-1] == (1<<((1<<U)-1))-1) {
 				*(*program)++ = rep(level);
-			} else if (lcnt == 1<<(level-1)) {
-				*(*program)++ = rate0_right(level);
-				compile(program, frozen+(1<<(level-1-U)), level-1);
-				*(*program)++ = rate0_combine(level);
-			} else if (rcnt == 0) {
-				*(*program)++ = left(level);
-				compile(program, frozen, level-1);
-				*(*program)++ = rate1_combine(level);
 			} else {
 				*(*program)++ = left(level);
 				compile(program, frozen, level-1);

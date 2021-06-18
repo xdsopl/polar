@@ -452,14 +452,6 @@ class PolarDecoder
 			soft[i+length/2] = PH::madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void rate0_right(TYPE **, int)
-	{
-		assert(level <= MAX_M);
-		int length = 1 << level;
-		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = PH::qadd(soft[i+length], soft[i+length/2+length]);
-	}
-	template <int level>
 	void combine(TYPE **, int index)
 	{
 		assert(level <= MAX_M);
@@ -468,29 +460,29 @@ class PolarDecoder
 			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+length/2]);
 	}
 	template <int level>
-	void rate0_combine(TYPE **, int index)
+	void rate0(TYPE **, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
-		for (int i = 0; i < length/2; ++i)
-			hard[index+i] = hard[index+i+length/2];
+		for (int i = 0; i < length; ++i)
+			hard[index+i] = PH::one();
 	}
 	template <int level>
-	void rate1_combine(TYPE **msg, int index)
+	void rate1(TYPE **msg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
-		for (int i = 0; i < length/2; ++i)
-			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+length/2] = PH::signum(soft[i+length/2+length]));
-		for (int i = 0; i < length/2; i += 2) {
-			soft[i] = PH::qmul(hard[index+i+length/2], hard[index+i+1+length/2]);
-			soft[i+1] = hard[index+i+1+length/2];
+		for (int i = 0; i < length; ++i)
+			hard[index+i] = PH::signum(soft[i+length]);
+		for (int i = 0; i < length; i += 2) {
+			soft[i] = PH::qmul(hard[index+i], hard[index+i+1]);
+			soft[i+1] = hard[index+i+1];
 		}
-		for (int h = 2; h < length/2; h *= 2)
+		for (int h = 2; h < length; h *= 2)
 			for (int i = 0; i < length; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
 					soft[j] = PH::qmul(soft[j], soft[j+h]);
-		for (int i = 0; i < length/2; ++i)
+		for (int i = 0; i < length; ++i)
 			*(*msg)++ = soft[i];
 	}
 	template <int level>
@@ -592,146 +584,118 @@ public:
 			case (2<<5)+28: right<28>(msg, idx); idx += 1<<(28-1); break;
 			case (2<<5)+29: right<29>(msg, idx); idx += 1<<(29-1); break;
 			case (2<<5)+30: right<30>(msg, idx); idx += 1<<(30-1); break;
-			case (3<<5)+3: rate0_right<3>(msg, idx); idx += 1<<(3-1); break;
-			case (3<<5)+4: rate0_right<4>(msg, idx); idx += 1<<(4-1); break;
-			case (3<<5)+5: rate0_right<5>(msg, idx); idx += 1<<(5-1); break;
-			case (3<<5)+6: rate0_right<6>(msg, idx); idx += 1<<(6-1); break;
-			case (3<<5)+7: rate0_right<7>(msg, idx); idx += 1<<(7-1); break;
-			case (3<<5)+8: rate0_right<8>(msg, idx); idx += 1<<(8-1); break;
-			case (3<<5)+9: rate0_right<9>(msg, idx); idx += 1<<(9-1); break;
-			case (3<<5)+10: rate0_right<10>(msg, idx); idx += 1<<(10-1); break;
-			case (3<<5)+11: rate0_right<11>(msg, idx); idx += 1<<(11-1); break;
-			case (3<<5)+12: rate0_right<12>(msg, idx); idx += 1<<(12-1); break;
-			case (3<<5)+13: rate0_right<13>(msg, idx); idx += 1<<(13-1); break;
-			case (3<<5)+14: rate0_right<14>(msg, idx); idx += 1<<(14-1); break;
-			case (3<<5)+15: rate0_right<15>(msg, idx); idx += 1<<(15-1); break;
-			case (3<<5)+16: rate0_right<16>(msg, idx); idx += 1<<(16-1); break;
-			case (3<<5)+17: rate0_right<17>(msg, idx); idx += 1<<(17-1); break;
-			case (3<<5)+18: rate0_right<18>(msg, idx); idx += 1<<(18-1); break;
-			case (3<<5)+19: rate0_right<19>(msg, idx); idx += 1<<(19-1); break;
-			case (3<<5)+20: rate0_right<20>(msg, idx); idx += 1<<(20-1); break;
-			case (3<<5)+21: rate0_right<21>(msg, idx); idx += 1<<(21-1); break;
-			case (3<<5)+22: rate0_right<22>(msg, idx); idx += 1<<(22-1); break;
-			case (3<<5)+23: rate0_right<23>(msg, idx); idx += 1<<(23-1); break;
-			case (3<<5)+24: rate0_right<24>(msg, idx); idx += 1<<(24-1); break;
-			case (3<<5)+25: rate0_right<25>(msg, idx); idx += 1<<(25-1); break;
-			case (3<<5)+26: rate0_right<26>(msg, idx); idx += 1<<(26-1); break;
-			case (3<<5)+27: rate0_right<27>(msg, idx); idx += 1<<(27-1); break;
-			case (3<<5)+28: rate0_right<28>(msg, idx); idx += 1<<(28-1); break;
-			case (3<<5)+29: rate0_right<29>(msg, idx); idx += 1<<(29-1); break;
-			case (3<<5)+30: rate0_right<30>(msg, idx); idx += 1<<(30-1); break;
-			case (4<<5)+3: idx -= 1<<(3-1); combine<3>(msg, idx); break;
-			case (4<<5)+4: idx -= 1<<(4-1); combine<4>(msg, idx); break;
-			case (4<<5)+5: idx -= 1<<(5-1); combine<5>(msg, idx); break;
-			case (4<<5)+6: idx -= 1<<(6-1); combine<6>(msg, idx); break;
-			case (4<<5)+7: idx -= 1<<(7-1); combine<7>(msg, idx); break;
-			case (4<<5)+8: idx -= 1<<(8-1); combine<8>(msg, idx); break;
-			case (4<<5)+9: idx -= 1<<(9-1); combine<9>(msg, idx); break;
-			case (4<<5)+10: idx -= 1<<(10-1); combine<10>(msg, idx); break;
-			case (4<<5)+11: idx -= 1<<(11-1); combine<11>(msg, idx); break;
-			case (4<<5)+12: idx -= 1<<(12-1); combine<12>(msg, idx); break;
-			case (4<<5)+13: idx -= 1<<(13-1); combine<13>(msg, idx); break;
-			case (4<<5)+14: idx -= 1<<(14-1); combine<14>(msg, idx); break;
-			case (4<<5)+15: idx -= 1<<(15-1); combine<15>(msg, idx); break;
-			case (4<<5)+16: idx -= 1<<(16-1); combine<16>(msg, idx); break;
-			case (4<<5)+17: idx -= 1<<(17-1); combine<17>(msg, idx); break;
-			case (4<<5)+18: idx -= 1<<(18-1); combine<18>(msg, idx); break;
-			case (4<<5)+19: idx -= 1<<(19-1); combine<19>(msg, idx); break;
-			case (4<<5)+20: idx -= 1<<(20-1); combine<20>(msg, idx); break;
-			case (4<<5)+21: idx -= 1<<(21-1); combine<21>(msg, idx); break;
-			case (4<<5)+22: idx -= 1<<(22-1); combine<22>(msg, idx); break;
-			case (4<<5)+23: idx -= 1<<(23-1); combine<23>(msg, idx); break;
-			case (4<<5)+24: idx -= 1<<(24-1); combine<24>(msg, idx); break;
-			case (4<<5)+25: idx -= 1<<(25-1); combine<25>(msg, idx); break;
-			case (4<<5)+26: idx -= 1<<(26-1); combine<26>(msg, idx); break;
-			case (4<<5)+27: idx -= 1<<(27-1); combine<27>(msg, idx); break;
-			case (4<<5)+28: idx -= 1<<(28-1); combine<28>(msg, idx); break;
-			case (4<<5)+29: idx -= 1<<(29-1); combine<29>(msg, idx); break;
-			case (4<<5)+30: idx -= 1<<(30-1); combine<30>(msg, idx); break;
-			case (5<<5)+3: idx -= 1<<(3-1); rate0_combine<3>(msg, idx); break;
-			case (5<<5)+4: idx -= 1<<(4-1); rate0_combine<4>(msg, idx); break;
-			case (5<<5)+5: idx -= 1<<(5-1); rate0_combine<5>(msg, idx); break;
-			case (5<<5)+6: idx -= 1<<(6-1); rate0_combine<6>(msg, idx); break;
-			case (5<<5)+7: idx -= 1<<(7-1); rate0_combine<7>(msg, idx); break;
-			case (5<<5)+8: idx -= 1<<(8-1); rate0_combine<8>(msg, idx); break;
-			case (5<<5)+9: idx -= 1<<(9-1); rate0_combine<9>(msg, idx); break;
-			case (5<<5)+10: idx -= 1<<(10-1); rate0_combine<10>(msg, idx); break;
-			case (5<<5)+11: idx -= 1<<(11-1); rate0_combine<11>(msg, idx); break;
-			case (5<<5)+12: idx -= 1<<(12-1); rate0_combine<12>(msg, idx); break;
-			case (5<<5)+13: idx -= 1<<(13-1); rate0_combine<13>(msg, idx); break;
-			case (5<<5)+14: idx -= 1<<(14-1); rate0_combine<14>(msg, idx); break;
-			case (5<<5)+15: idx -= 1<<(15-1); rate0_combine<15>(msg, idx); break;
-			case (5<<5)+16: idx -= 1<<(16-1); rate0_combine<16>(msg, idx); break;
-			case (5<<5)+17: idx -= 1<<(17-1); rate0_combine<17>(msg, idx); break;
-			case (5<<5)+18: idx -= 1<<(18-1); rate0_combine<18>(msg, idx); break;
-			case (5<<5)+19: idx -= 1<<(19-1); rate0_combine<19>(msg, idx); break;
-			case (5<<5)+20: idx -= 1<<(20-1); rate0_combine<20>(msg, idx); break;
-			case (5<<5)+21: idx -= 1<<(21-1); rate0_combine<21>(msg, idx); break;
-			case (5<<5)+22: idx -= 1<<(22-1); rate0_combine<22>(msg, idx); break;
-			case (5<<5)+23: idx -= 1<<(23-1); rate0_combine<23>(msg, idx); break;
-			case (5<<5)+24: idx -= 1<<(24-1); rate0_combine<24>(msg, idx); break;
-			case (5<<5)+25: idx -= 1<<(25-1); rate0_combine<25>(msg, idx); break;
-			case (5<<5)+26: idx -= 1<<(26-1); rate0_combine<26>(msg, idx); break;
-			case (5<<5)+27: idx -= 1<<(27-1); rate0_combine<27>(msg, idx); break;
-			case (5<<5)+28: idx -= 1<<(28-1); rate0_combine<28>(msg, idx); break;
-			case (5<<5)+29: idx -= 1<<(29-1); rate0_combine<29>(msg, idx); break;
-			case (5<<5)+30: idx -= 1<<(30-1); rate0_combine<30>(msg, idx); break;
-			case (6<<5)+3: rate1_combine<3>(msg, idx); break;
-			case (6<<5)+4: rate1_combine<4>(msg, idx); break;
-			case (6<<5)+5: rate1_combine<5>(msg, idx); break;
-			case (6<<5)+6: rate1_combine<6>(msg, idx); break;
-			case (6<<5)+7: rate1_combine<7>(msg, idx); break;
-			case (6<<5)+8: rate1_combine<8>(msg, idx); break;
-			case (6<<5)+9: rate1_combine<9>(msg, idx); break;
-			case (6<<5)+10: rate1_combine<10>(msg, idx); break;
-			case (6<<5)+11: rate1_combine<11>(msg, idx); break;
-			case (6<<5)+12: rate1_combine<12>(msg, idx); break;
-			case (6<<5)+13: rate1_combine<13>(msg, idx); break;
-			case (6<<5)+14: rate1_combine<14>(msg, idx); break;
-			case (6<<5)+15: rate1_combine<15>(msg, idx); break;
-			case (6<<5)+16: rate1_combine<16>(msg, idx); break;
-			case (6<<5)+17: rate1_combine<17>(msg, idx); break;
-			case (6<<5)+18: rate1_combine<18>(msg, idx); break;
-			case (6<<5)+19: rate1_combine<19>(msg, idx); break;
-			case (6<<5)+20: rate1_combine<20>(msg, idx); break;
-			case (6<<5)+21: rate1_combine<21>(msg, idx); break;
-			case (6<<5)+22: rate1_combine<22>(msg, idx); break;
-			case (6<<5)+23: rate1_combine<23>(msg, idx); break;
-			case (6<<5)+24: rate1_combine<24>(msg, idx); break;
-			case (6<<5)+25: rate1_combine<25>(msg, idx); break;
-			case (6<<5)+26: rate1_combine<26>(msg, idx); break;
-			case (6<<5)+27: rate1_combine<27>(msg, idx); break;
-			case (6<<5)+28: rate1_combine<28>(msg, idx); break;
-			case (6<<5)+29: rate1_combine<29>(msg, idx); break;
-			case (6<<5)+30: rate1_combine<30>(msg, idx); break;
-			case (7<<5)+3: rep<3>(msg, idx); break;
-			case (7<<5)+4: rep<4>(msg, idx); break;
-			case (7<<5)+5: rep<5>(msg, idx); break;
-			case (7<<5)+6: rep<6>(msg, idx); break;
-			case (7<<5)+7: rep<7>(msg, idx); break;
-			case (7<<5)+8: rep<8>(msg, idx); break;
-			case (7<<5)+9: rep<9>(msg, idx); break;
-			case (7<<5)+10: rep<10>(msg, idx); break;
-			case (7<<5)+11: rep<11>(msg, idx); break;
-			case (7<<5)+12: rep<12>(msg, idx); break;
-			case (7<<5)+13: rep<13>(msg, idx); break;
-			case (7<<5)+14: rep<14>(msg, idx); break;
-			case (7<<5)+15: rep<15>(msg, idx); break;
-			case (7<<5)+16: rep<16>(msg, idx); break;
-			case (7<<5)+17: rep<17>(msg, idx); break;
-			case (7<<5)+18: rep<18>(msg, idx); break;
-			case (7<<5)+19: rep<19>(msg, idx); break;
-			case (7<<5)+20: rep<20>(msg, idx); break;
-			case (7<<5)+21: rep<21>(msg, idx); break;
-			case (7<<5)+22: rep<22>(msg, idx); break;
-			case (7<<5)+23: rep<23>(msg, idx); break;
-			case (7<<5)+24: rep<24>(msg, idx); break;
-			case (7<<5)+25: rep<25>(msg, idx); break;
-			case (7<<5)+26: rep<26>(msg, idx); break;
-			case (7<<5)+27: rep<27>(msg, idx); break;
-			case (7<<5)+28: rep<28>(msg, idx); break;
-			case (7<<5)+29: rep<29>(msg, idx); break;
-			case (7<<5)+30: rep<30>(msg, idx); break;
+			case (3<<5)+3: idx -= 1<<(3-1); combine<3>(msg, idx); break;
+			case (3<<5)+4: idx -= 1<<(4-1); combine<4>(msg, idx); break;
+			case (3<<5)+5: idx -= 1<<(5-1); combine<5>(msg, idx); break;
+			case (3<<5)+6: idx -= 1<<(6-1); combine<6>(msg, idx); break;
+			case (3<<5)+7: idx -= 1<<(7-1); combine<7>(msg, idx); break;
+			case (3<<5)+8: idx -= 1<<(8-1); combine<8>(msg, idx); break;
+			case (3<<5)+9: idx -= 1<<(9-1); combine<9>(msg, idx); break;
+			case (3<<5)+10: idx -= 1<<(10-1); combine<10>(msg, idx); break;
+			case (3<<5)+11: idx -= 1<<(11-1); combine<11>(msg, idx); break;
+			case (3<<5)+12: idx -= 1<<(12-1); combine<12>(msg, idx); break;
+			case (3<<5)+13: idx -= 1<<(13-1); combine<13>(msg, idx); break;
+			case (3<<5)+14: idx -= 1<<(14-1); combine<14>(msg, idx); break;
+			case (3<<5)+15: idx -= 1<<(15-1); combine<15>(msg, idx); break;
+			case (3<<5)+16: idx -= 1<<(16-1); combine<16>(msg, idx); break;
+			case (3<<5)+17: idx -= 1<<(17-1); combine<17>(msg, idx); break;
+			case (3<<5)+18: idx -= 1<<(18-1); combine<18>(msg, idx); break;
+			case (3<<5)+19: idx -= 1<<(19-1); combine<19>(msg, idx); break;
+			case (3<<5)+20: idx -= 1<<(20-1); combine<20>(msg, idx); break;
+			case (3<<5)+21: idx -= 1<<(21-1); combine<21>(msg, idx); break;
+			case (3<<5)+22: idx -= 1<<(22-1); combine<22>(msg, idx); break;
+			case (3<<5)+23: idx -= 1<<(23-1); combine<23>(msg, idx); break;
+			case (3<<5)+24: idx -= 1<<(24-1); combine<24>(msg, idx); break;
+			case (3<<5)+25: idx -= 1<<(25-1); combine<25>(msg, idx); break;
+			case (3<<5)+26: idx -= 1<<(26-1); combine<26>(msg, idx); break;
+			case (3<<5)+27: idx -= 1<<(27-1); combine<27>(msg, idx); break;
+			case (3<<5)+28: idx -= 1<<(28-1); combine<28>(msg, idx); break;
+			case (3<<5)+29: idx -= 1<<(29-1); combine<29>(msg, idx); break;
+			case (3<<5)+30: idx -= 1<<(30-1); combine<30>(msg, idx); break;
+			case (4<<5)+3: rate0<3>(msg, idx); break;
+			case (4<<5)+4: rate0<4>(msg, idx); break;
+			case (4<<5)+5: rate0<5>(msg, idx); break;
+			case (4<<5)+6: rate0<6>(msg, idx); break;
+			case (4<<5)+7: rate0<7>(msg, idx); break;
+			case (4<<5)+8: rate0<8>(msg, idx); break;
+			case (4<<5)+9: rate0<9>(msg, idx); break;
+			case (4<<5)+10: rate0<10>(msg, idx); break;
+			case (4<<5)+11: rate0<11>(msg, idx); break;
+			case (4<<5)+12: rate0<12>(msg, idx); break;
+			case (4<<5)+13: rate0<13>(msg, idx); break;
+			case (4<<5)+14: rate0<14>(msg, idx); break;
+			case (4<<5)+15: rate0<15>(msg, idx); break;
+			case (4<<5)+16: rate0<16>(msg, idx); break;
+			case (4<<5)+17: rate0<17>(msg, idx); break;
+			case (4<<5)+18: rate0<18>(msg, idx); break;
+			case (4<<5)+19: rate0<19>(msg, idx); break;
+			case (4<<5)+20: rate0<20>(msg, idx); break;
+			case (4<<5)+21: rate0<21>(msg, idx); break;
+			case (4<<5)+22: rate0<22>(msg, idx); break;
+			case (4<<5)+23: rate0<23>(msg, idx); break;
+			case (4<<5)+24: rate0<24>(msg, idx); break;
+			case (4<<5)+25: rate0<25>(msg, idx); break;
+			case (4<<5)+26: rate0<26>(msg, idx); break;
+			case (4<<5)+27: rate0<27>(msg, idx); break;
+			case (4<<5)+28: rate0<28>(msg, idx); break;
+			case (4<<5)+29: rate0<29>(msg, idx); break;
+			case (4<<5)+30: rate0<30>(msg, idx); break;
+			case (5<<5)+3: rate1<3>(msg, idx); break;
+			case (5<<5)+4: rate1<4>(msg, idx); break;
+			case (5<<5)+5: rate1<5>(msg, idx); break;
+			case (5<<5)+6: rate1<6>(msg, idx); break;
+			case (5<<5)+7: rate1<7>(msg, idx); break;
+			case (5<<5)+8: rate1<8>(msg, idx); break;
+			case (5<<5)+9: rate1<9>(msg, idx); break;
+			case (5<<5)+10: rate1<10>(msg, idx); break;
+			case (5<<5)+11: rate1<11>(msg, idx); break;
+			case (5<<5)+12: rate1<12>(msg, idx); break;
+			case (5<<5)+13: rate1<13>(msg, idx); break;
+			case (5<<5)+14: rate1<14>(msg, idx); break;
+			case (5<<5)+15: rate1<15>(msg, idx); break;
+			case (5<<5)+16: rate1<16>(msg, idx); break;
+			case (5<<5)+17: rate1<17>(msg, idx); break;
+			case (5<<5)+18: rate1<18>(msg, idx); break;
+			case (5<<5)+19: rate1<19>(msg, idx); break;
+			case (5<<5)+20: rate1<20>(msg, idx); break;
+			case (5<<5)+21: rate1<21>(msg, idx); break;
+			case (5<<5)+22: rate1<22>(msg, idx); break;
+			case (5<<5)+23: rate1<23>(msg, idx); break;
+			case (5<<5)+24: rate1<24>(msg, idx); break;
+			case (5<<5)+25: rate1<25>(msg, idx); break;
+			case (5<<5)+26: rate1<26>(msg, idx); break;
+			case (5<<5)+27: rate1<27>(msg, idx); break;
+			case (5<<5)+28: rate1<28>(msg, idx); break;
+			case (5<<5)+29: rate1<29>(msg, idx); break;
+			case (5<<5)+30: rate1<30>(msg, idx); break;
+			case (6<<5)+3: rep<3>(msg, idx); break;
+			case (6<<5)+4: rep<4>(msg, idx); break;
+			case (6<<5)+5: rep<5>(msg, idx); break;
+			case (6<<5)+6: rep<6>(msg, idx); break;
+			case (6<<5)+7: rep<7>(msg, idx); break;
+			case (6<<5)+8: rep<8>(msg, idx); break;
+			case (6<<5)+9: rep<9>(msg, idx); break;
+			case (6<<5)+10: rep<10>(msg, idx); break;
+			case (6<<5)+11: rep<11>(msg, idx); break;
+			case (6<<5)+12: rep<12>(msg, idx); break;
+			case (6<<5)+13: rep<13>(msg, idx); break;
+			case (6<<5)+14: rep<14>(msg, idx); break;
+			case (6<<5)+15: rep<15>(msg, idx); break;
+			case (6<<5)+16: rep<16>(msg, idx); break;
+			case (6<<5)+17: rep<17>(msg, idx); break;
+			case (6<<5)+18: rep<18>(msg, idx); break;
+			case (6<<5)+19: rep<19>(msg, idx); break;
+			case (6<<5)+20: rep<20>(msg, idx); break;
+			case (6<<5)+21: rep<21>(msg, idx); break;
+			case (6<<5)+22: rep<22>(msg, idx); break;
+			case (6<<5)+23: rep<23>(msg, idx); break;
+			case (6<<5)+24: rep<24>(msg, idx); break;
+			case (6<<5)+25: rep<25>(msg, idx); break;
+			case (6<<5)+26: rep<26>(msg, idx); break;
+			case (6<<5)+27: rep<27>(msg, idx); break;
+			case (6<<5)+28: rep<28>(msg, idx); break;
+			case (6<<5)+29: rep<29>(msg, idx); break;
+			case (6<<5)+30: rep<30>(msg, idx); break;
 			default:
 				assert(false);
 			}
