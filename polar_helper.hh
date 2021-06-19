@@ -9,6 +9,7 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 template <typename TYPE>
 struct PolarHelper
 {
+	typedef TYPE PATH;
 	static TYPE one()
 	{
 		return 1;
@@ -56,6 +57,7 @@ template <typename VALUE, int WIDTH>
 struct PolarHelper<SIMD<VALUE, WIDTH>>
 {
 	typedef SIMD<VALUE, WIDTH> TYPE;
+	typedef VALUE PATH;
 	static TYPE one()
 	{
 		return vdup<TYPE>(1);
@@ -98,6 +100,7 @@ template <int WIDTH>
 struct PolarHelper<SIMD<int8_t, WIDTH>>
 {
 	typedef SIMD<int8_t, WIDTH> TYPE;
+	typedef int PATH;
 	static TYPE one()
 	{
 		return vdup<TYPE>(1);
@@ -147,6 +150,7 @@ struct PolarHelper<SIMD<int8_t, WIDTH>>
 template <>
 struct PolarHelper<int8_t>
 {
+	typedef int PATH;
 	static int8_t one()
 	{
 		return 1;
