@@ -1,11 +1,10 @@
 /*
-Test bench for successive cancellation decoding of polar codes
+Test bench for SCL decoding of polar codes
 
 Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 */
 
 #include <limits>
-#include <stdlib.h>
 #include <random>
 #include <chrono>
 #include <cassert>
@@ -15,7 +14,6 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 #include <functional>
 #include "simd.hh"
 #include "polar_helper.hh"
-#include "polar_compiler.hh"
 #include "polar_decoder.hh"
 #include "polar_encoder.hh"
 #include "polar_freezer.hh"
@@ -41,54 +39,9 @@ public:
 	}
 };
 
-class PolarHistogram
-{
-	int hist[256];
-public:
-	void operator()(const uint8_t *program)
-	{
-		for (int i = 0; i < 256; ++i)
-			hist[i] = 0;
-		++program;
-		while (*program != 255)
-			++hist[*program++];
-		int top[32] = { 0 };
-		for (int j = 0; j < 6; ++j)
-			for (int i = 0; i < 32; ++i)
-				top[i] = std::max(top[i], hist[(j<<5)+i]);
-		int len[32];
-		for (int i = 0; i < 32; ++i)
-			len[i] = 2 + std::log10(top[i]+!top[i]);
-		int N = 0;
-		for (int j = 0; j < 6; ++j)
-			for (int i = N; i < 32; ++i)
-				if (hist[(j<<5)+i])
-					N = i;
-		std::cerr << std::endl << "left: ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(0<<5)+i];
-		std::cerr << std::endl << "right:";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(1<<5)+i];
-		std::cerr << std::endl << "comb: ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(2<<5)+i];
-		std::cerr << std::endl << "rate0:";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(3<<5)+i];
-		std::cerr << std::endl << "rate1:";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(4<<5)+i];
-		std::cerr << std::endl << "rep:  ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(5<<5)+i];
-		std::cerr << std::endl << std::endl;
-	}
-};
-
 int main()
 {
-	const int M = 14;
+	const int M = 11;
 	const int N = 1 << M;
 	const bool systematic = true;
 #if 1
@@ -97,10 +50,6 @@ int main()
 	typedef float code_type;
 #endif
 
-#if 0
-	const int SIMD_WIDTH = 1;
-	typedef code_type simd_type;
-#else
 #ifdef __AVX2__
 	const int SIZEOF_SIMD = 32;
 #else
@@ -108,14 +57,15 @@ int main()
 #endif
 	const int SIMD_WIDTH = SIZEOF_SIMD / sizeof(code_type);
 	typedef SIMD<code_type, SIMD_WIDTH> simd_type;
-#endif
+
 	int64_t loops = 320 / SIMD_WIDTH;
 	std::random_device rd;
 	typedef std::default_random_engine generator;
 	typedef std::uniform_int_distribution<int> distribution;
 	auto data = std::bind(distribution(0, 1), generator(rd()));
 	auto frozen = new uint8_t[N];
-	auto codeword = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));
+	auto codeword = new code_type[N];
+	auto temp = new simd_type[N];
 
 	long double erasure_probability = 0.5;
 	int K = (1 - erasure_probability) * N;
@@ -135,23 +85,15 @@ int main()
 		delete freeze;
 	}
 	std::cerr << "Polar(" << N << ", " << K << ")" << std::endl;
-	auto message = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * K));
-	auto decoded = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * K));
-	PolarEncoder<simd_type, M> encode;
-	auto program = new uint8_t[N];
-	PolarCompiler compile;
-	int length = compile(program, frozen, M);
-	std::cerr << "program length = " << length << std::endl;
+	auto message = new code_type[K];
+	auto decoded = new simd_type[K];
+	PolarHelper<simd_type>::PATH metric[SIMD_WIDTH];
 	std::cerr << "sizeof(PolarDecoder<simd_type, M>) = " << sizeof(PolarDecoder<simd_type, M>) << std::endl;
-	if (1) {
-		PolarHistogram histogram;
-		histogram(program);
-	}
-	auto decode = reinterpret_cast<PolarDecoder<simd_type, M> *>(aligned_alloc(sizeof(simd_type), sizeof(PolarDecoder<simd_type, M>)));
+	auto decode = new PolarDecoder<simd_type, M>;
 
-	auto orig = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));
-	auto noisy = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));
-	auto symb = new double[SIMD_WIDTH*N];
+	auto orig = new code_type[N];
+	auto noisy = new code_type[N];
+	auto symb = new double[N];
 	double low_SNR = std::floor(design_SNR-3);
 	double high_SNR = std::ceil(design_SNR+5);
 	double min_SNR = high_SNR, max_mbs = 0;
@@ -172,78 +114,82 @@ int main()
 		int64_t ambiguity_erasures = 0;
 		double avg_mbs = 0;
 		for (int l = 0; l < loops; ++l) {
-			for (int i = 0; i < SIMD_WIDTH * K; ++i)
+			for (int i = 0; i < K; ++i)
 				message[i] = 1 - 2 * data();
 
 			if (systematic) {
-				if (1) {
-					PolarSysEnc<simd_type, M> sysenc;
-					sysenc(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(message), frozen);
-				} else {
-					for (int i = 0, j = 0; i < N; ++i)
-						for (int k = 0; k < SIMD_WIDTH; ++k)
-							if (frozen[i])
-								codeword[SIMD_WIDTH*i+k] = 0;
-							else
-								codeword[SIMD_WIDTH*i+k] = message[j++];
-					(*decode)(reinterpret_cast<simd_type *>(decoded), reinterpret_cast<simd_type *>(codeword), program);
-					encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(decoded), frozen);
-				}
+				PolarSysEnc<code_type, M> sysenc;
+				sysenc(codeword, message, frozen);
 				for (int i = 0, j = 0; i < N; ++i)
-					for (int k = 0; k < SIMD_WIDTH; ++k)
-						if (!frozen[i])
-							assert(codeword[SIMD_WIDTH*i+k] == message[j++]);
+					if (!frozen[i])
+						assert(codeword[i] == message[j++]);
 			} else {
-				encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(message), frozen);
+				PolarEncoder<code_type, M> encode;
+				encode(codeword, message, frozen);
 			}
 
-			for (int i = 0; i < SIMD_WIDTH * N; ++i)
+			for (int i = 0; i < N; ++i)
 				orig[i] = codeword[i];
 
-			for (int i = 0; i < SIMD_WIDTH * N; ++i)
+			for (int i = 0; i < N; ++i)
 				symb[i] = codeword[i];
 
-			for (int i = 0; i < SIMD_WIDTH * N; ++i)
+			for (int i = 0; i < N; ++i)
 				symb[i] += awgn();
 
 			// $LLR=log(\frac{p(x=+1|y)}{p(x=-1|y)})$
 			// $p(x|\mu,\sigma)=\frac{1}{\sqrt{2\pi}\sigma}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}$
 			double DIST = 2; // BPSK
 			double fact = DIST / (sigma_noise * sigma_noise);
-			for (int i = 0; i < SIMD_WIDTH * N; ++i)
+			for (int i = 0; i < N; ++i)
 				codeword[i] = PolarHelper<code_type>::quant(fact * symb[i]);
 
-			for (int i = 0; i < SIMD_WIDTH * N; ++i)
+			for (int i = 0; i < N; ++i)
 				noisy[i] = codeword[i];
 
 			auto start = std::chrono::system_clock::now();
-			(*decode)(reinterpret_cast<simd_type *>(decoded), reinterpret_cast<simd_type *>(codeword), program);
+			(*decode)(metric, decoded, codeword, frozen);
 			auto end = std::chrono::system_clock::now();
 			auto usec = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-			double mbs = (double)(SIMD_WIDTH * K) / usec.count();
+			double mbs = (double)K / usec.count();
 			avg_mbs += mbs;
 
 			if (systematic) {
-				encode(reinterpret_cast<simd_type *>(codeword), reinterpret_cast<simd_type *>(decoded), frozen);
+				PolarEncoder<simd_type, M> encode;
+				encode(temp, decoded, frozen);
 				for (int i = 0, j = 0; i < N; ++i)
-					for (int k = 0; k < SIMD_WIDTH; ++k)
-						if (!frozen[i])
-							decoded[j++] = codeword[SIMD_WIDTH*i+k];
+					if (!frozen[i])
+						decoded[j++] = temp[i];
 			}
 
-			for (int i = 0; i < SIMD_WIDTH * N; ++i)
-				awgn_errors += noisy[i] * orig[i] < 0;
-			for (int i = 0; i < SIMD_WIDTH * N; ++i)
+			int best = 0;
+			if (1) {
+				for (int k = 0; k < SIMD_WIDTH; ++k)
+					if (metric[k] < metric[best])
+						best = k;
+			} else {
+				int errs[SIMD_WIDTH] = { 0 };
+				for (int i = 0; i < K; ++i)
+					for (int k = 0; k < SIMD_WIDTH; ++k)
+						errs[k] += message[i] != decoded[i].v[k];
+				for (int k = 0; k < SIMD_WIDTH; ++k)
+					if (errs[k] < errs[best])
+						best = k;
+			}
+
+			for (int i = 0; i < N; ++i)
+				awgn_errors += noisy[i] * (orig[i] < 0);
+			for (int i = 0; i < N; ++i)
 				quantization_erasures += !noisy[i];
-			for (int i = 0; i < SIMD_WIDTH * K; ++i)
-				uncorrected_errors += decoded[i] * message[i] < 0;
-			for (int i = 0; i < SIMD_WIDTH * K; ++i)
-				ambiguity_erasures += !decoded[i];
+			for (int i = 0; i < K; ++i)
+				uncorrected_errors += decoded[i].v[best] * message[i] < 0;
+			for (int i = 0; i < K; ++i)
+				ambiguity_erasures += !decoded[i].v[best];
 		}
 
 		avg_mbs /= loops;
 		max_mbs = std::max(max_mbs, avg_mbs);
-		double bit_error_rate = (double)(uncorrected_errors + ambiguity_erasures) / (double)(SIMD_WIDTH * K * loops);
+		double bit_error_rate = (double)(uncorrected_errors + ambiguity_erasures) / (double)(K * loops);
 		if (!uncorrected_errors && !ambiguity_erasures)
 			min_SNR = std::min(min_SNR, SNR);
 		else
