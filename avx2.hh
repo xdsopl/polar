@@ -4,8 +4,7 @@ Intel AVX2 acceleration
 Copyright 2018 Ahmet Inan <inan@aicodix.de>
 */
 
-#ifndef AVX2_HH
-#define AVX2_HH
+#pragma once
 
 #include <immintrin.h>
 
@@ -1135,4 +1134,15 @@ inline SIMD<int64_t, 4> vclamp(SIMD<int64_t, 4> x, int64_t a, int64_t b)
 	return tmp;
 }
 
-#endif
+template <>
+inline SIMD<uint8_t, 32> vshuf(SIMD<uint8_t, 32> a, SIMD<uint8_t, 32> b)
+{
+	SIMD<uint8_t, 32> tmp;
+	__m256i c = _mm256_sub_epi8(b.m, _mm256_set1_epi8(16));
+	__m256i d = _mm256_or_si256(b.m, _mm256_cmpgt_epi8(b.m, _mm256_set1_epi8(15)));
+	__m256i e = _mm256_shuffle_epi8(_mm256_permute2x128_si256(a.m, a.m, 0), d);
+	__m256i f = _mm256_shuffle_epi8(_mm256_permute2x128_si256(a.m, a.m, 17), c);
+	tmp.m = _mm256_or_si256(e, f);
+	return tmp;
+}
+
