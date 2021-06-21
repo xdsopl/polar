@@ -118,8 +118,6 @@ public:
 			case (0<<5)+27: left<27+2>(msg, idx); break;
 			case (0<<5)+28: left<28+2>(msg, idx); break;
 			case (0<<5)+29: left<29+2>(msg, idx); break;
-			case (0<<5)+30: left<30+2>(msg, idx); break;
-			case (0<<5)+31: left<31+2>(msg, idx); break;
 			case (1<<5)+0: right<0+2>(msg, idx); idx += 1<<(0+1); break;
 			case (1<<5)+1: right<1+2>(msg, idx); idx += 1<<(1+1); break;
 			case (1<<5)+2: right<2+2>(msg, idx); idx += 1<<(2+1); break;
@@ -150,8 +148,6 @@ public:
 			case (1<<5)+27: right<27+2>(msg, idx); idx += 1<<(27+1); break;
 			case (1<<5)+28: right<28+2>(msg, idx); idx += 1<<(28+1); break;
 			case (1<<5)+29: right<29+2>(msg, idx); idx += 1<<(29+1); break;
-			case (1<<5)+30: right<30+2>(msg, idx); idx += 1<<(30+1); break;
-			case (1<<5)+31: right<31+2>(msg, idx); idx += 1<<(31+1); break;
 			case (2<<5)+0: idx -= 1<<(0+1); comb<0+2>(msg, idx); break;
 			case (2<<5)+1: idx -= 1<<(1+1); comb<1+2>(msg, idx); break;
 			case (2<<5)+2: idx -= 1<<(2+1); comb<2+2>(msg, idx); break;
@@ -182,8 +178,6 @@ public:
 			case (2<<5)+27: idx -= 1<<(27+1); comb<27+2>(msg, idx); break;
 			case (2<<5)+28: idx -= 1<<(28+1); comb<28+2>(msg, idx); break;
 			case (2<<5)+29: idx -= 1<<(29+1); comb<29+2>(msg, idx); break;
-			case (2<<5)+30: idx -= 1<<(30+1); comb<30+2>(msg, idx); break;
-			case (2<<5)+31: idx -= 1<<(31+1); comb<31+2>(msg, idx); break;
 			case (3<<5)+0: rate0<0+1>(msg, idx); break;
 			case (3<<5)+1: rate0<1+1>(msg, idx); break;
 			case (3<<5)+2: rate0<2+1>(msg, idx); break;
@@ -215,7 +209,6 @@ public:
 			case (3<<5)+28: rate0<28+1>(msg, idx); break;
 			case (3<<5)+29: rate0<29+1>(msg, idx); break;
 			case (3<<5)+30: rate0<30+1>(msg, idx); break;
-			case (3<<5)+31: rate0<31+1>(msg, idx); break;
 			case (4<<5)+0: rate1<0+1>(msg, idx); break;
 			case (4<<5)+1: rate1<1+1>(msg, idx); break;
 			case (4<<5)+2: rate1<2+1>(msg, idx); break;
@@ -247,7 +240,6 @@ public:
 			case (4<<5)+28: rate1<28+1>(msg, idx); break;
 			case (4<<5)+29: rate1<29+1>(msg, idx); break;
 			case (4<<5)+30: rate1<30+1>(msg, idx); break;
-			case (4<<5)+31: rate1<31+1>(msg, idx); break;
 			case (5<<5)+0: rep<0+1>(msg, idx); break;
 			case (5<<5)+1: rep<1+1>(msg, idx); break;
 			case (5<<5)+2: rep<2+1>(msg, idx); break;
@@ -279,7 +271,6 @@ public:
 			case (5<<5)+28: rep<28+1>(msg, idx); break;
 			case (5<<5)+29: rep<29+1>(msg, idx); break;
 			case (5<<5)+30: rep<30+1>(msg, idx); break;
-			case (5<<5)+31: rep<31+1>(msg, idx); break;
 			default:
 				assert(false);
 			}
