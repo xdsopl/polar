@@ -12,7 +12,7 @@ class PolarDecoder
 	typedef PolarHelper<TYPE> PH;
 
 	template <int level>
-	void left(TYPE **, int)
+	void left(TYPE *, int)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -20,7 +20,7 @@ class PolarDecoder
 			soft[i+length/2] = PH::prod(soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void right(TYPE **, int index)
+	void right(TYPE *, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -28,7 +28,7 @@ class PolarDecoder
 			soft[i+length/2] = PH::madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void comb(TYPE **, int index)
+	void comb(TYPE *, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -36,7 +36,7 @@ class PolarDecoder
 			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+length/2]);
 	}
 	template <int level>
-	void rate0(TYPE **, int index)
+	void rate0(TYPE *, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -44,7 +44,7 @@ class PolarDecoder
 			hard[index+i] = PH::one();
 	}
 	template <int level>
-	void rate1(TYPE **msg, int index)
+	void rate1(TYPE *mesg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -59,10 +59,10 @@ class PolarDecoder
 				for (int j = i; j < i + h; ++j)
 					soft[j] = PH::qmul(soft[j], soft[j+h]);
 		for (int i = 0; i < length; ++i)
-			*(*msg)++ = soft[i];
+			mesg[i] = soft[i];
 	}
 	template <int level>
-	void rep(TYPE **msg, int index)
+	void rep(TYPE *mesg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
@@ -70,7 +70,7 @@ class PolarDecoder
 			for (int i = 0; i < h/2; ++i)
 				soft[i+h/2] = PH::qadd(soft[i+h], soft[i+h/2+h]);
 		TYPE hardi = PH::signum(soft[1]);
-		*(*msg)++ = hardi;
+		*mesg = hardi;
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = hardi;
 	}
@@ -85,7 +85,7 @@ public:
 		for (int i = 0; i < length; ++i)
 			soft[i+length] = codeword[i];
 		int idx = 0;
-		TYPE **msg = &message;
+		TYPE *msg = message;
 		while (*program != 255) {
 			switch (*program++) {
 			case (0<<5)+0: left<0+2>(msg, idx); break;
@@ -209,68 +209,68 @@ public:
 			case (3<<5)+28: rate0<28+1>(msg, idx); break;
 			case (3<<5)+29: rate0<29+1>(msg, idx); break;
 			case (3<<5)+30: rate0<30+1>(msg, idx); break;
-			case (4<<5)+0: rate1<0+1>(msg, idx); break;
-			case (4<<5)+1: rate1<1+1>(msg, idx); break;
-			case (4<<5)+2: rate1<2+1>(msg, idx); break;
-			case (4<<5)+3: rate1<3+1>(msg, idx); break;
-			case (4<<5)+4: rate1<4+1>(msg, idx); break;
-			case (4<<5)+5: rate1<5+1>(msg, idx); break;
-			case (4<<5)+6: rate1<6+1>(msg, idx); break;
-			case (4<<5)+7: rate1<7+1>(msg, idx); break;
-			case (4<<5)+8: rate1<8+1>(msg, idx); break;
-			case (4<<5)+9: rate1<9+1>(msg, idx); break;
-			case (4<<5)+10: rate1<10+1>(msg, idx); break;
-			case (4<<5)+11: rate1<11+1>(msg, idx); break;
-			case (4<<5)+12: rate1<12+1>(msg, idx); break;
-			case (4<<5)+13: rate1<13+1>(msg, idx); break;
-			case (4<<5)+14: rate1<14+1>(msg, idx); break;
-			case (4<<5)+15: rate1<15+1>(msg, idx); break;
-			case (4<<5)+16: rate1<16+1>(msg, idx); break;
-			case (4<<5)+17: rate1<17+1>(msg, idx); break;
-			case (4<<5)+18: rate1<18+1>(msg, idx); break;
-			case (4<<5)+19: rate1<19+1>(msg, idx); break;
-			case (4<<5)+20: rate1<20+1>(msg, idx); break;
-			case (4<<5)+21: rate1<21+1>(msg, idx); break;
-			case (4<<5)+22: rate1<22+1>(msg, idx); break;
-			case (4<<5)+23: rate1<23+1>(msg, idx); break;
-			case (4<<5)+24: rate1<24+1>(msg, idx); break;
-			case (4<<5)+25: rate1<25+1>(msg, idx); break;
-			case (4<<5)+26: rate1<26+1>(msg, idx); break;
-			case (4<<5)+27: rate1<27+1>(msg, idx); break;
-			case (4<<5)+28: rate1<28+1>(msg, idx); break;
-			case (4<<5)+29: rate1<29+1>(msg, idx); break;
-			case (4<<5)+30: rate1<30+1>(msg, idx); break;
-			case (5<<5)+0: rep<0+1>(msg, idx); break;
-			case (5<<5)+1: rep<1+1>(msg, idx); break;
-			case (5<<5)+2: rep<2+1>(msg, idx); break;
-			case (5<<5)+3: rep<3+1>(msg, idx); break;
-			case (5<<5)+4: rep<4+1>(msg, idx); break;
-			case (5<<5)+5: rep<5+1>(msg, idx); break;
-			case (5<<5)+6: rep<6+1>(msg, idx); break;
-			case (5<<5)+7: rep<7+1>(msg, idx); break;
-			case (5<<5)+8: rep<8+1>(msg, idx); break;
-			case (5<<5)+9: rep<9+1>(msg, idx); break;
-			case (5<<5)+10: rep<10+1>(msg, idx); break;
-			case (5<<5)+11: rep<11+1>(msg, idx); break;
-			case (5<<5)+12: rep<12+1>(msg, idx); break;
-			case (5<<5)+13: rep<13+1>(msg, idx); break;
-			case (5<<5)+14: rep<14+1>(msg, idx); break;
-			case (5<<5)+15: rep<15+1>(msg, idx); break;
-			case (5<<5)+16: rep<16+1>(msg, idx); break;
-			case (5<<5)+17: rep<17+1>(msg, idx); break;
-			case (5<<5)+18: rep<18+1>(msg, idx); break;
-			case (5<<5)+19: rep<19+1>(msg, idx); break;
-			case (5<<5)+20: rep<20+1>(msg, idx); break;
-			case (5<<5)+21: rep<21+1>(msg, idx); break;
-			case (5<<5)+22: rep<22+1>(msg, idx); break;
-			case (5<<5)+23: rep<23+1>(msg, idx); break;
-			case (5<<5)+24: rep<24+1>(msg, idx); break;
-			case (5<<5)+25: rep<25+1>(msg, idx); break;
-			case (5<<5)+26: rep<26+1>(msg, idx); break;
-			case (5<<5)+27: rep<27+1>(msg, idx); break;
-			case (5<<5)+28: rep<28+1>(msg, idx); break;
-			case (5<<5)+29: rep<29+1>(msg, idx); break;
-			case (5<<5)+30: rep<30+1>(msg, idx); break;
+			case (4<<5)+0: rate1<0+1>(msg, idx); msg += 1<<(0+1); break;
+			case (4<<5)+1: rate1<1+1>(msg, idx); msg += 1<<(1+1); break;
+			case (4<<5)+2: rate1<2+1>(msg, idx); msg += 1<<(2+1); break;
+			case (4<<5)+3: rate1<3+1>(msg, idx); msg += 1<<(3+1); break;
+			case (4<<5)+4: rate1<4+1>(msg, idx); msg += 1<<(4+1); break;
+			case (4<<5)+5: rate1<5+1>(msg, idx); msg += 1<<(5+1); break;
+			case (4<<5)+6: rate1<6+1>(msg, idx); msg += 1<<(6+1); break;
+			case (4<<5)+7: rate1<7+1>(msg, idx); msg += 1<<(7+1); break;
+			case (4<<5)+8: rate1<8+1>(msg, idx); msg += 1<<(8+1); break;
+			case (4<<5)+9: rate1<9+1>(msg, idx); msg += 1<<(9+1); break;
+			case (4<<5)+10: rate1<10+1>(msg, idx); msg += 1<<(10+1); break;
+			case (4<<5)+11: rate1<11+1>(msg, idx); msg += 1<<(11+1); break;
+			case (4<<5)+12: rate1<12+1>(msg, idx); msg += 1<<(12+1); break;
+			case (4<<5)+13: rate1<13+1>(msg, idx); msg += 1<<(13+1); break;
+			case (4<<5)+14: rate1<14+1>(msg, idx); msg += 1<<(14+1); break;
+			case (4<<5)+15: rate1<15+1>(msg, idx); msg += 1<<(15+1); break;
+			case (4<<5)+16: rate1<16+1>(msg, idx); msg += 1<<(16+1); break;
+			case (4<<5)+17: rate1<17+1>(msg, idx); msg += 1<<(17+1); break;
+			case (4<<5)+18: rate1<18+1>(msg, idx); msg += 1<<(18+1); break;
+			case (4<<5)+19: rate1<19+1>(msg, idx); msg += 1<<(19+1); break;
+			case (4<<5)+20: rate1<20+1>(msg, idx); msg += 1<<(20+1); break;
+			case (4<<5)+21: rate1<21+1>(msg, idx); msg += 1<<(21+1); break;
+			case (4<<5)+22: rate1<22+1>(msg, idx); msg += 1<<(22+1); break;
+			case (4<<5)+23: rate1<23+1>(msg, idx); msg += 1<<(23+1); break;
+			case (4<<5)+24: rate1<24+1>(msg, idx); msg += 1<<(24+1); break;
+			case (4<<5)+25: rate1<25+1>(msg, idx); msg += 1<<(25+1); break;
+			case (4<<5)+26: rate1<26+1>(msg, idx); msg += 1<<(26+1); break;
+			case (4<<5)+27: rate1<27+1>(msg, idx); msg += 1<<(27+1); break;
+			case (4<<5)+28: rate1<28+1>(msg, idx); msg += 1<<(28+1); break;
+			case (4<<5)+29: rate1<29+1>(msg, idx); msg += 1<<(29+1); break;
+			case (4<<5)+30: rate1<30+1>(msg, idx); msg += 1<<(30+1); break;
+			case (5<<5)+0: rep<0+1>(msg, idx); ++msg; break;
+			case (5<<5)+1: rep<1+1>(msg, idx); ++msg; break;
+			case (5<<5)+2: rep<2+1>(msg, idx); ++msg; break;
+			case (5<<5)+3: rep<3+1>(msg, idx); ++msg; break;
+			case (5<<5)+4: rep<4+1>(msg, idx); ++msg; break;
+			case (5<<5)+5: rep<5+1>(msg, idx); ++msg; break;
+			case (5<<5)+6: rep<6+1>(msg, idx); ++msg; break;
+			case (5<<5)+7: rep<7+1>(msg, idx); ++msg; break;
+			case (5<<5)+8: rep<8+1>(msg, idx); ++msg; break;
+			case (5<<5)+9: rep<9+1>(msg, idx); ++msg; break;
+			case (5<<5)+10: rep<10+1>(msg, idx); ++msg; break;
+			case (5<<5)+11: rep<11+1>(msg, idx); ++msg; break;
+			case (5<<5)+12: rep<12+1>(msg, idx); ++msg; break;
+			case (5<<5)+13: rep<13+1>(msg, idx); ++msg; break;
+			case (5<<5)+14: rep<14+1>(msg, idx); ++msg; break;
+			case (5<<5)+15: rep<15+1>(msg, idx); ++msg; break;
+			case (5<<5)+16: rep<16+1>(msg, idx); ++msg; break;
+			case (5<<5)+17: rep<17+1>(msg, idx); ++msg; break;
+			case (5<<5)+18: rep<18+1>(msg, idx); ++msg; break;
+			case (5<<5)+19: rep<19+1>(msg, idx); ++msg; break;
+			case (5<<5)+20: rep<20+1>(msg, idx); ++msg; break;
+			case (5<<5)+21: rep<21+1>(msg, idx); ++msg; break;
+			case (5<<5)+22: rep<22+1>(msg, idx); ++msg; break;
+			case (5<<5)+23: rep<23+1>(msg, idx); ++msg; break;
+			case (5<<5)+24: rep<24+1>(msg, idx); ++msg; break;
+			case (5<<5)+25: rep<25+1>(msg, idx); ++msg; break;
+			case (5<<5)+26: rep<26+1>(msg, idx); ++msg; break;
+			case (5<<5)+27: rep<27+1>(msg, idx); ++msg; break;
+			case (5<<5)+28: rep<28+1>(msg, idx); ++msg; break;
+			case (5<<5)+29: rep<29+1>(msg, idx); ++msg; break;
+			case (5<<5)+30: rep<30+1>(msg, idx); ++msg; break;
 			default:
 				assert(false);
 			}
