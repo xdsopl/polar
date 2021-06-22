@@ -7,41 +7,37 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 #pragma once
 
 template <typename TYPE, int M>
-class PolarTree
+struct PolarTree
 {
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
 	static const int N = 1 << M;
-	TYPE temp[N/2];
-	PolarTree<TYPE, M-1> left, right;
-public:
-	void operator()(PATH *metric, TYPE *message, int *count, TYPE *hard, const TYPE *soft, const uint8_t *frozen)
+	static void decode(PATH *metric, TYPE *message, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
 		for (int i = 0; i < N/2; ++i)
-			temp[i] = PH::prod(soft[i], soft[i+N/2]);
-		left(metric, message, count, hard, temp, frozen);
+			soft[i+N/2] = PH::prod(soft[i+N], soft[i+N/2+N]);
+		PolarTree<TYPE, M-1>::decode(metric, message, count, hard, soft, frozen, index);
 		for (int i = 0; i < N/2; ++i)
-			temp[i] = PH::madd(hard[i], soft[i], soft[i+N/2]);
-		right(metric, message, count, hard+N/2, temp, frozen+N/2);
+			soft[i+N/2] = PH::madd(hard[index+i], soft[i+N], soft[i+N/2+N]);
+		PolarTree<TYPE, M-1>::decode(metric, message, count, hard, soft, frozen+N/2, index+N/2);
 		for (int i = 0; i < N/2; ++i)
-			hard[i] = PH::qmul(hard[i], hard[i+N/2]);
+			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+N/2]);
 	}
 };
 
 template <typename TYPE>
-class PolarTree<TYPE, 0>
+struct PolarTree<TYPE, 0>
 {
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
-public:
-	void operator()(PATH *metric, TYPE *message, int *count, TYPE *hard, const TYPE *soft, const uint8_t *frozen)
+	static void decode(PATH *metric, TYPE *message, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
 		(void)metric;
 		if (*frozen) {
-			*hard = PH::one();
+			hard[index] = PH::one();
 		} else {
-			*hard = PH::signum(*soft);
-			message[(*count)++] = *hard;
+			hard[index] = PH::signum(soft[1]);
+			message[(*count)++] = hard[index];
 		}
 	}
 };
@@ -53,9 +49,8 @@ class PolarDecoder
 	typedef typename TYPE::value_type value_type;
 	typedef typename PH::PATH PATH;
 	static const int N = 1 << M;
+	TYPE soft[2*N];
 	TYPE hard[N];
-	TYPE soft[N];
-	PolarTree<TYPE, M> root;
 public:
 	void operator()(PATH *metric, TYPE *message, const value_type *codeword, const uint8_t *frozen)
 	{
@@ -64,8 +59,8 @@ public:
 		for (int k = 1; k < TYPE::SIZE; ++k)
 			metric[k] = 1000;
 		for (int i = 0; i < N; ++i)
-			soft[i] = vdup<TYPE>(codeword[i]);
-		root(metric, message, &count, hard, soft, frozen);
+			soft[N+i] = vdup<TYPE>(codeword[i]);
+		PolarTree<TYPE, M>::decode(metric, message, &count, hard, soft, frozen, 0);
 	}
 };
 
