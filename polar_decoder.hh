@@ -6,7 +6,7 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 
 #pragma once
 
-template <typename TYPE, int M>
+template <typename TYPE, int M0, int M>
 struct PolarTree
 {
 	typedef PolarHelper<TYPE> PH;
@@ -16,29 +16,57 @@ struct PolarTree
 	{
 		for (int i = 0; i < N/2; ++i)
 			soft[i+N/2] = PH::prod(soft[i+N], soft[i+N/2+N]);
-		PolarTree<TYPE, M-1>::decode(metric, message, count, hard, soft, frozen, index);
+		PolarTree<TYPE, M0, M-1>::decode(metric, message, count, hard, soft, frozen, index);
 		for (int i = 0; i < N/2; ++i)
 			soft[i+N/2] = PH::madd(hard[index+i], soft[i+N], soft[i+N/2+N]);
-		PolarTree<TYPE, M-1>::decode(metric, message, count, hard, soft, frozen+N/2, index+N/2);
+		PolarTree<TYPE, M0, M-1>::decode(metric, message, count, hard, soft, frozen+N/2, index+N/2);
 		for (int i = 0; i < N/2; ++i)
 			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+N/2]);
 	}
 };
 
-template <typename TYPE>
-struct PolarTree<TYPE, 0>
+template <typename TYPE, int M0>
+struct PolarTree<TYPE, M0, 0>
 {
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
 	static void decode(PATH *metric, TYPE *message, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
-		(void)metric;
+		TYPE hrd, sft = soft[1];
 		if (*frozen) {
-			hard[index] = PH::one();
+			for (int k = 0; k < TYPE::SIZE; ++k)
+				if (sft.v[k] < 0)
+					metric[k] -= sft.v[k];
+			hrd = PH::one();
 		} else {
-			hard[index] = PH::signum(soft[1]);
-			message[(*count)++] = hard[index];
+			PATH fork[2*TYPE::SIZE];
+			for (int k = 0; k < TYPE::SIZE; ++k)
+				fork[k] = fork[k+TYPE::SIZE] = metric[k];
+			for (int k = 0; k < TYPE::SIZE; ++k)
+				if (sft.v[k] < 0)
+					fork[k] -= sft.v[k];
+				else
+					fork[k+TYPE::SIZE] += sft.v[k];
+			int perm[2*TYPE::SIZE];
+			for (int k = 0; k < 2*TYPE::SIZE; ++k)
+				perm[k] = k;
+			std::nth_element(perm, perm+TYPE::SIZE, perm+2*TYPE::SIZE, [fork](int a, int b){ return fork[a] < fork[b]; });
+			for (int k = 0; k < TYPE::SIZE; ++k)
+				metric[k] = fork[perm[k]];
+			SIMD<typename TYPE::uint_type, TYPE::SIZE> map;
+			for (int k = 0; k < TYPE::SIZE; ++k)
+				map.v[k] = perm[k] % TYPE::SIZE;
+			for (int i = 0; i < (1<<M0); ++i)
+				soft[i] = vshuf(soft[i], map);
+			for (int i = 0; i < (1<<M0); ++i)
+				hard[i] = vshuf(hard[i], map);
+			for (int i = 0; i < *count; ++i)
+				message[i] = vshuf(message[i], map);
+			for (int k = 0; k < TYPE::SIZE; ++k)
+				hrd.v[k] = perm[k] < TYPE::SIZE ? 1 : -1;
+			message[(*count)++] = hrd;
 		}
+		hard[index] = hrd;
 	}
 };
 
@@ -60,7 +88,7 @@ public:
 			metric[k] = 1000;
 		for (int i = 0; i < N; ++i)
 			soft[N+i] = vdup<TYPE>(codeword[i]);
-		PolarTree<TYPE, M>::decode(metric, message, &count, hard, soft, frozen, 0);
+		PolarTree<TYPE, M, M>::decode(metric, message, &count, hard, soft, frozen, 0);
 	}
 };
 
