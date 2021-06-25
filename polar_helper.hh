@@ -21,6 +21,10 @@ struct PolarHelper
 	{
 		return (v > 0) - (v < 0);
 	}
+	static TYPE decide(TYPE v)
+	{
+		return (v >= 0) - (v < 0);
+	}
 	template <typename IN>
 	static TYPE quant(IN in)
 	{
@@ -50,6 +54,10 @@ struct PolarHelper
 	{
 		return a * b + c;
 	}
+	static TYPE flip(TYPE a, TYPE b, TYPE c, TYPE d)
+	{
+		return c == d ? qmul(a, b) : a;
+	}
 };
 
 template <typename VALUE, int WIDTH>
@@ -67,6 +75,10 @@ struct PolarHelper<SIMD<VALUE, WIDTH>>
 	static TYPE signum(TYPE a)
 	{
 		return vsignum(a);
+	}
+	static TYPE decide(TYPE a)
+	{
+		return vreinterpret<TYPE>(vorr(vmask(one()), vand(vmask(vdup<TYPE>(-VALUE(0))), vmask(a))));
 	}
 	static TYPE qabs(TYPE a)
 	{
@@ -92,6 +104,10 @@ struct PolarHelper<SIMD<VALUE, WIDTH>>
 	{
 		return vadd(vmul(a, b), c);
 	}
+	static TYPE flip(TYPE a, TYPE b, TYPE c, TYPE d)
+	{
+		return vreinterpret<TYPE>(vbsl(vceq(c, d), vmask(qmul(a, b)), vmask(a)));
+	}
 };
 
 template <int WIDTH>
@@ -110,9 +126,17 @@ struct PolarHelper<SIMD<int8_t, WIDTH>>
 	{
 		return vsignum(a);
 	}
+	static TYPE decide(TYPE a)
+	{
+		return vreinterpret<TYPE>(vorr(vmask(one()), vcltz(a)));
+	}
 	static TYPE qabs(TYPE a)
 	{
 		return vqabs(a);
+	}
+	static TYPE qmin(TYPE a, TYPE b)
+	{
+		return vmin(a, b);
 	}
 	static TYPE qadd(TYPE a, TYPE b)
 	{
@@ -142,6 +166,10 @@ struct PolarHelper<SIMD<int8_t, WIDTH>>
 		return vqadd(vsign(vmax(b, vdup<TYPE>(-127)), a), c);
 #endif
 	}
+	static TYPE flip(TYPE a, TYPE b, TYPE c, TYPE d)
+	{
+		return vreinterpret<TYPE>(vbsl(vceq(c, d), vmask(qmul(a, b)), vmask(a)));
+	}
 };
 
 template <>
@@ -158,6 +186,10 @@ struct PolarHelper<int8_t>
 	static int8_t signum(int8_t v)
 	{
 		return (v > 0) - (v < 0);
+	}
+	static int8_t decide(int8_t v)
+	{
+		return (v >= 0) - (v < 0);
 	}
 	template <typename IN>
 	static int8_t quant(IN in)
@@ -189,6 +221,10 @@ struct PolarHelper<int8_t>
 	static int8_t madd(int8_t a, int8_t b, int8_t c)
 	{
 		return std::min<int16_t>(std::max<int16_t>(int16_t(a) * int16_t(b) + int16_t(c), -128), 127);
+	}
+	static int8_t flip(int8_t a, int8_t b, int8_t c, int8_t d)
+	{
+		return c == d ? qmul(a, b) : a;
 	}
 };
 

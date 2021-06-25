@@ -36,6 +36,10 @@ class PolarCompiler
 	{
 		return node(5, level - 1);
 	}
+	static uint8_t spc(int level)
+	{
+		return node(6, level - 1);
+	}
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
 		int count = 0;
@@ -53,6 +57,8 @@ class PolarCompiler
 			*(*program)++ = rate1(level);
 		} else if (count == (1<<level)-1 && !frozen[(1<<level)-1]) {
 			*(*program)++ = rep(level);
+		} else if (count == 1 && frozen[0]) {
+			*(*program)++ = spc(level);
 		} else {
 			*(*program)++ = left(level);
 			compile(program, frozen, level-1);

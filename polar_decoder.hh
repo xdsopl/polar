@@ -74,6 +74,34 @@ class PolarDecoder
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = hardi;
 	}
+	template <int level>
+	void spc(TYPE *mesg, int index)
+	{
+		assert(level <= MAX_M);
+		int length = 1 << level;
+		for (int i = 0; i < length; ++i)
+			hard[index+i] = PH::decide(soft[i+length]);
+		TYPE parity = hard[index];
+		for (int i = 1; i < length; ++i)
+			parity = PH::qmul(parity, hard[index+i]);
+		for (int i = 0; i < length; ++i)
+			soft[i] = PH::qabs(soft[i+length]);
+		TYPE weak = soft[0];
+		for (int i = 1; i < length; ++i)
+			weak = PH::qmin(weak, soft[i]);
+		for (int i = 0; i < length; ++i)
+			hard[index+i] = PH::flip(hard[index+i], parity, weak, soft[i]);
+		for (int i = 0; i < length; i += 2) {
+			soft[i] = PH::qmul(hard[index+i], hard[index+i+1]);
+			soft[i+1] = hard[index+i+1];
+		}
+		for (int h = 2; h < length; h *= 2)
+			for (int i = 0; i < length; i += 2 * h)
+				for (int j = i; j < i + h; ++j)
+					soft[j] = PH::qmul(soft[j], soft[j+h]);
+		for (int i = 0; i < length-1; ++i)
+			mesg[i] = soft[i+1];
+	}
 	TYPE soft[1U<<(MAX_M+1)];
 	TYPE hard[1U<<MAX_M];
 public:
@@ -271,6 +299,36 @@ public:
 			case (5<<5)+28: rep<28+1>(msg, idx); ++msg; break;
 			case (5<<5)+29: rep<29+1>(msg, idx); ++msg; break;
 			case (5<<5)+30: rep<30+1>(msg, idx); ++msg; break;
+			case (6<<5)+0: spc<0+1>(msg, idx); msg += (1<<(0+1))-1; break;
+			case (6<<5)+1: spc<1+1>(msg, idx); msg += (1<<(1+1))-1; break;
+			case (6<<5)+2: spc<2+1>(msg, idx); msg += (1<<(2+1))-1; break;
+			case (6<<5)+3: spc<3+1>(msg, idx); msg += (1<<(3+1))-1; break;
+			case (6<<5)+4: spc<4+1>(msg, idx); msg += (1<<(4+1))-1; break;
+			case (6<<5)+5: spc<5+1>(msg, idx); msg += (1<<(5+1))-1; break;
+			case (6<<5)+6: spc<6+1>(msg, idx); msg += (1<<(6+1))-1; break;
+			case (6<<5)+7: spc<7+1>(msg, idx); msg += (1<<(7+1))-1; break;
+			case (6<<5)+8: spc<8+1>(msg, idx); msg += (1<<(8+1))-1; break;
+			case (6<<5)+9: spc<9+1>(msg, idx); msg += (1<<(9+1))-1; break;
+			case (6<<5)+10: spc<10+1>(msg, idx); msg += (1<<(10+1))-1; break;
+			case (6<<5)+11: spc<11+1>(msg, idx); msg += (1<<(11+1))-1; break;
+			case (6<<5)+12: spc<12+1>(msg, idx); msg += (1<<(12+1))-1; break;
+			case (6<<5)+13: spc<13+1>(msg, idx); msg += (1<<(13+1))-1; break;
+			case (6<<5)+14: spc<14+1>(msg, idx); msg += (1<<(14+1))-1; break;
+			case (6<<5)+15: spc<15+1>(msg, idx); msg += (1<<(15+1))-1; break;
+			case (6<<5)+16: spc<16+1>(msg, idx); msg += (1<<(16+1))-1; break;
+			case (6<<5)+17: spc<17+1>(msg, idx); msg += (1<<(17+1))-1; break;
+			case (6<<5)+18: spc<18+1>(msg, idx); msg += (1<<(18+1))-1; break;
+			case (6<<5)+19: spc<19+1>(msg, idx); msg += (1<<(19+1))-1; break;
+			case (6<<5)+20: spc<20+1>(msg, idx); msg += (1<<(20+1))-1; break;
+			case (6<<5)+21: spc<21+1>(msg, idx); msg += (1<<(21+1))-1; break;
+			case (6<<5)+22: spc<22+1>(msg, idx); msg += (1<<(22+1))-1; break;
+			case (6<<5)+23: spc<23+1>(msg, idx); msg += (1<<(23+1))-1; break;
+			case (6<<5)+24: spc<24+1>(msg, idx); msg += (1<<(24+1))-1; break;
+			case (6<<5)+25: spc<25+1>(msg, idx); msg += (1<<(25+1))-1; break;
+			case (6<<5)+26: spc<26+1>(msg, idx); msg += (1<<(26+1))-1; break;
+			case (6<<5)+27: spc<27+1>(msg, idx); msg += (1<<(27+1))-1; break;
+			case (6<<5)+28: spc<28+1>(msg, idx); msg += (1<<(28+1))-1; break;
+			case (6<<5)+29: spc<29+1>(msg, idx); msg += (1<<(29+1))-1; break;
 			default:
 				assert(false);
 			}

@@ -53,14 +53,14 @@ public:
 		while (*program != 255)
 			++hist[*program++];
 		int top[32] = { 0 };
-		for (int j = 0; j < 6; ++j)
+		for (int j = 0; j < 7; ++j)
 			for (int i = 0; i < 32; ++i)
 				top[i] = std::max(top[i], hist[(j<<5)+i]);
 		int len[32];
 		for (int i = 0; i < 32; ++i)
 			len[i] = 2 + std::log10(top[i]+!top[i]);
 		int N = 0;
-		for (int j = 0; j < 6; ++j)
+		for (int j = 0; j < 7; ++j)
 			for (int i = N; i < 32; ++i)
 				if (hist[(j<<5)+i])
 					N = i;
@@ -82,6 +82,9 @@ public:
 		std::cerr << std::endl << "rep:  ";
 		for (int i = 0; i <= N; ++i)
 			std::cerr << std::setw(len[i]) << hist[(5<<5)+i];
+		std::cerr << std::endl << "spc:  ";
+		for (int i = 0; i <= N; ++i)
+			std::cerr << std::setw(len[i]) << hist[(6<<5)+i];
 		std::cerr << std::endl << std::endl;
 	}
 };
