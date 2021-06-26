@@ -78,7 +78,7 @@ struct PolarHelper<SIMD<VALUE, WIDTH>>
 	}
 	static TYPE decide(TYPE a)
 	{
-		return vreinterpret<TYPE>(vorr(vmask(one()), vand(vmask(vdup<TYPE>(-VALUE(0))), vmask(a))));
+		return vcopysign(one(), a);
 	}
 	static TYPE qabs(TYPE a)
 	{
