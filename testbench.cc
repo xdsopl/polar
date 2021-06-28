@@ -41,54 +41,6 @@ public:
 	}
 };
 
-class PolarHistogram
-{
-	int hist[256];
-public:
-	void operator()(const uint8_t *program)
-	{
-		for (int i = 0; i < 256; ++i)
-			hist[i] = 0;
-		++program;
-		while (*program != 255)
-			++hist[*program++];
-		int top[32] = { 0 };
-		for (int j = 0; j < 7; ++j)
-			for (int i = 0; i < 32; ++i)
-				top[i] = std::max(top[i], hist[(j<<5)+i]);
-		int len[32];
-		for (int i = 0; i < 32; ++i)
-			len[i] = 2 + std::log10(top[i]+!top[i]);
-		int N = 0;
-		for (int j = 0; j < 7; ++j)
-			for (int i = N; i < 32; ++i)
-				if (hist[(j<<5)+i])
-					N = i;
-		std::cerr << std::endl << "left: ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(0<<5)+i];
-		std::cerr << std::endl << "right:";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(1<<5)+i];
-		std::cerr << std::endl << "comb: ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(2<<5)+i];
-		std::cerr << std::endl << "rate0:";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(3<<5)+i];
-		std::cerr << std::endl << "rate1:";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(4<<5)+i];
-		std::cerr << std::endl << "rep:  ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(5<<5)+i];
-		std::cerr << std::endl << "spc:  ";
-		for (int i = 0; i <= N; ++i)
-			std::cerr << std::setw(len[i]) << hist[(6<<5)+i];
-		std::cerr << std::endl << std::endl;
-	}
-};
-
 int main()
 {
 	const int M = 14;
@@ -146,10 +98,6 @@ int main()
 	int length = compile(program, frozen, M);
 	std::cerr << "program length = " << length << std::endl;
 	std::cerr << "sizeof(PolarDecoder<simd_type, M>) = " << sizeof(PolarDecoder<simd_type, M>) << std::endl;
-	if (1) {
-		PolarHistogram histogram;
-		histogram(program);
-	}
 	auto decode = reinterpret_cast<PolarDecoder<simd_type, M> *>(aligned_alloc(sizeof(simd_type), sizeof(PolarDecoder<simd_type, M>)));
 
 	auto orig = reinterpret_cast<code_type *>(aligned_alloc(sizeof(simd_type), sizeof(simd_type) * N));

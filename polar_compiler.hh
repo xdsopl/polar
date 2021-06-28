@@ -8,38 +8,8 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 
 class PolarCompiler
 {
-	static uint8_t node(int func, int level)
-	{
-		return (func << 5) | level;
-	}
-	static uint8_t left(int level)
-	{
-		return node(0, level - 2);
-	}
-	static uint8_t right(int level)
-	{
-		return node(1, level - 2);
-	}
-	static uint8_t comb(int level)
-	{
-		return node(2, level - 2);
-	}
-	static uint8_t rate0(int level)
-	{
-		return node(3, level - 1);
-	}
-	static uint8_t rate1(int level)
-	{
-		return node(4, level - 1);
-	}
-	static uint8_t rep(int level)
-	{
-		return node(5, level - 1);
-	}
-	static uint8_t spc(int level)
-	{
-		return node(6, level - 1);
-	}
+	static const int left = 0, right = 1, comb = 2,
+		rate0 = 3, rate1 = 4, rep = 5, spc = 6;
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
 		int count = 0;
@@ -52,19 +22,19 @@ class PolarCompiler
 		assert(level > 0);
 		int count = frozen_count(frozen, level);
 		if (count == 1<<level) {
-			*(*program)++ = rate0(level);
+			*(*program)++ = rate0;
 		} else if (count == 0) {
-			*(*program)++ = rate1(level);
+			*(*program)++ = rate1;
 		} else if (count == (1<<level)-1 && !frozen[(1<<level)-1]) {
-			*(*program)++ = rep(level);
+			*(*program)++ = rep;
 		} else if (count == 1 && frozen[0]) {
-			*(*program)++ = spc(level);
+			*(*program)++ = spc;
 		} else {
-			*(*program)++ = left(level);
+			*(*program)++ = left;
 			compile(program, frozen, level-1);
-			*(*program)++ = right(level);
+			*(*program)++ = right;
 			compile(program, frozen+(1<<(level-1)), level-1);
-			*(*program)++ = comb(level);
+			*(*program)++ = comb;
 		}
 	}
 public:
