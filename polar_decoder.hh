@@ -6,106 +6,195 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 
 #pragma once
 
-template <typename TYPE, int MAX_M>
+template <int MAX_M>
 class PolarDecoder
 {
-	typedef PolarHelper<TYPE> PH;
+#ifdef __AVX2__
+	static const int WIDTH = 32;
+#else
+	static const int WIDTH = 16;
+#endif
+	typedef SIMD<int8_t, WIDTH> VECT;
 
+	static int8_t signum(int8_t v)
+	{
+		return (v > 0) - (v < 0);
+	}
+	static int8_t decide(int8_t v)
+	{
+		return (v >= 0) - (v < 0);
+	}
+	static int8_t qabs(int8_t a)
+	{
+		return std::abs(std::max<int8_t>(a, -127));
+	}
+	static int8_t qmin(int8_t a, int8_t b)
+	{
+		return std::min(a, b);
+	}
+	static int8_t qadd(int8_t a, int8_t b)
+	{
+		return std::min<int16_t>(std::max<int16_t>(int16_t(a) + int16_t(b), -128), 127);
+	}
+	static int8_t qmul(int8_t a, int8_t b)
+	{
+		// return std::min<int16_t>(std::max<int16_t>(int16_t(a) * int16_t(b), -128), 127);
+		// only used for hard decision values anyway
+		return a * b;
+	}
+	static int8_t prod(int8_t a, int8_t b)
+	{
+		return signum(a) * signum(b) * qmin(qabs(a), qabs(b));
+	}
+	static int8_t madd(int8_t a, int8_t b, int8_t c)
+	{
+		return std::min<int16_t>(std::max<int16_t>(int16_t(a) * int16_t(b) + int16_t(c), -128), 127);
+	}
+	static VECT one()
+	{
+		return vdup<VECT>(1);
+	}
+	static VECT zero()
+	{
+		return vzero<VECT>();
+	}
+	static VECT signum(VECT a)
+	{
+		return vsignum(a);
+	}
+	static VECT decide(VECT a)
+	{
+		return vreinterpret<VECT>(vorr(vmask(one()), vcltz(a)));
+	}
+	static VECT qabs(VECT a)
+	{
+		return vqabs(a);
+	}
+	static VECT qmin(VECT a, VECT b)
+	{
+		return vmin(a, b);
+	}
+	static VECT qadd(VECT a, VECT b)
+	{
+		return vqadd(a, b);
+	}
+	static VECT qmul(VECT a, VECT b)
+	{
+#ifdef __ARM_NEON__
+		return vmul(a, b);
+#else
+		return vsign(a, b);
+#endif
+	}
+	static VECT prod(VECT a, VECT b)
+	{
+#ifdef __ARM_NEON__
+		return vmul(vmul(vsignum(a), vsignum(b)), vmin(vqabs(a), vqabs(b)));
+#else
+		return vsign(vmin(vqabs(a), vqabs(b)), vsign(vsignum(a), b));
+#endif
+	}
+	static VECT madd(VECT a, VECT b, VECT c)
+	{
+#ifdef __ARM_NEON__
+		return vqadd(vmul(a, vmax(b, vdup<VECT>(-127))), c);
+#else
+		return vqadd(vsign(vmax(b, vdup<VECT>(-127)), a), c);
+#endif
+	}
 	template <int level>
-	void left(TYPE *, int)
+	void left(int8_t *, int)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = PH::prod(soft[i+length], soft[i+length/2+length]);
+			soft[i+length/2] = prod(soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void right(TYPE *, int index)
+	void right(int8_t *, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = PH::madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
+			soft[i+length/2] = madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
 	}
 	template <int level>
-	void comb(TYPE *, int index)
+	void comb(int8_t *, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length/2; ++i)
-			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+length/2]);
+			hard[index+i] = qmul(hard[index+i], hard[index+i+length/2]);
 	}
 	template <int level>
-	void rate0(TYPE *, int index)
+	void rate0(int8_t *, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
-			hard[index+i] = PH::one();
+			hard[index+i] = 1;
 	}
 	template <int level>
-	void rate1(TYPE *mesg, int index)
+	void rate1(int8_t *mesg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
-			hard[index+i] = PH::signum(soft[i+length]);
+			hard[index+i] = signum(soft[i+length]);
 		for (int i = 0; i < length; i += 2) {
-			soft[i] = PH::qmul(hard[index+i], hard[index+i+1]);
+			soft[i] = qmul(hard[index+i], hard[index+i+1]);
 			soft[i+1] = hard[index+i+1];
 		}
 		for (int h = 2; h < length; h *= 2)
 			for (int i = 0; i < length; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					soft[j] = PH::qmul(soft[j], soft[j+h]);
+					soft[j] = qmul(soft[j], soft[j+h]);
 		for (int i = 0; i < length; ++i)
 			mesg[i] = soft[i];
 	}
 	template <int level>
-	void rep(TYPE *mesg, int index)
+	void rep(int8_t *mesg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int h = length; h; h /= 2)
 			for (int i = 0; i < h/2; ++i)
-				soft[i+h/2] = PH::qadd(soft[i+h], soft[i+h/2+h]);
-		TYPE hardi = PH::signum(soft[1]);
+				soft[i+h/2] = qadd(soft[i+h], soft[i+h/2+h]);
+		int8_t hardi = signum(soft[1]);
 		*mesg = hardi;
 		for (int i = 0; i < length; ++i)
 			hard[index+i] = hardi;
 	}
 	template <int level>
-	void spc(TYPE *mesg, int index)
+	void spc(int8_t *mesg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
-			hard[index+i] = PH::decide(soft[i+length]);
-		TYPE parity = hard[index];
+			hard[index+i] = decide(soft[i+length]);
+		int8_t parity = hard[index];
 		for (int i = 1; i < length; ++i)
-			parity = PH::qmul(parity, hard[index+i]);
-		for (int i = 0; i < length; ++i)
-			soft[i] = PH::qabs(soft[i+length]);
-		TYPE weak = soft[0];
+			parity = qmul(parity, hard[index+i]);
+		int worst = 0;
 		for (int i = 1; i < length; ++i)
-			weak = PH::qmin(weak, soft[i]);
-		for (int i = 0; i < length; ++i)
-			hard[index+i] = PH::flip(hard[index+i], parity, weak, soft[i]);
+			if (qabs(soft[worst+length]) > qabs(soft[i+length]))
+				worst = i;
+		hard[index+worst] = qmul(hard[index+worst], parity);
 		for (int i = 0; i < length; i += 2) {
-			soft[i] = PH::qmul(hard[index+i], hard[index+i+1]);
+			soft[i] = qmul(hard[index+i], hard[index+i+1]);
 			soft[i+1] = hard[index+i+1];
 		}
 		for (int h = 2; h < length; h *= 2)
 			for (int i = 0; i < length; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					soft[j] = PH::qmul(soft[j], soft[j+h]);
+					soft[j] = qmul(soft[j], soft[j+h]);
 		for (int i = 0; i < length-1; ++i)
 			mesg[i] = soft[i+1];
 	}
-	TYPE soft[1U<<(MAX_M+1)];
-	TYPE hard[1U<<MAX_M];
+	int8_t soft[1U<<(MAX_M+1)];
+	int8_t hard[1U<<MAX_M];
 public:
-	void operator()(TYPE *message, const TYPE *codeword, const uint8_t *program)
+	void operator()(int8_t *message, const int8_t *codeword, const uint8_t *program)
 	{
 		int level = *program++;
 		assert(level <= MAX_M);
@@ -113,7 +202,7 @@ public:
 		for (int i = 0; i < length; ++i)
 			soft[i+length] = codeword[i];
 		int idx = 0, lvl = level;
-		TYPE *msg = message;
+		int8_t *msg = message;
 		while (*program != 255) {
 			switch (*program++) {
 			case 0:	switch (lvl--) {

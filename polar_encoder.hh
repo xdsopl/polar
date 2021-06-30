@@ -6,55 +6,53 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 
 #pragma once
 
-template <typename TYPE, int M>
+template <int M>
 class PolarEncoder
 {
 	static const int N = 1 << M;
-	typedef PolarHelper<TYPE> PH;
 public:
-	void operator()(TYPE *codeword, const TYPE *message, const uint8_t *frozen)
+	void operator()(int8_t *codeword, const int8_t *message, const uint8_t *frozen)
 	{
 		for (int i = 0; i < N; i += 2) {
-			TYPE msg0 = frozen[i] ? PH::one() : *message++;
-			TYPE msg1 = frozen[i+1] ? PH::one() : *message++;
-			codeword[i] = PH::qmul(msg0, msg1);
+			int8_t msg0 = frozen[i] ? 1 : *message++;
+			int8_t msg1 = frozen[i+1] ? 1 : *message++;
+			codeword[i] = msg0 * msg1;
 			codeword[i+1] = msg1;
 		}
 		for (int h = 2; h < N; h *= 2)
 			for (int i = 0; i < N; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					codeword[j] = PH::qmul(codeword[j], codeword[j+h]);
+					codeword[j] *= codeword[j+h];
 	}
 };
 
-template <typename TYPE, int M>
+template <int M>
 class PolarSysEnc
 {
 	static const int N = 1 << M;
-	typedef PolarHelper<TYPE> PH;
 public:
-	void operator()(TYPE *codeword, const TYPE *message, const uint8_t *frozen)
+	void operator()(int8_t *codeword, const int8_t *message, const uint8_t *frozen)
 	{
 		for (int i = 0; i < N; i += 2) {
-			TYPE msg0 = frozen[i] ? PH::one() : *message++;
-			TYPE msg1 = frozen[i+1] ? PH::one() : *message++;
-			codeword[i] = PH::qmul(msg0, msg1);
+			int8_t msg0 = frozen[i] ? 1 : *message++;
+			int8_t msg1 = frozen[i+1] ? 1 : *message++;
+			codeword[i] = msg0 * msg1;
 			codeword[i+1] = msg1;
 		}
 		for (int h = 2; h < N; h *= 2)
 			for (int i = 0; i < N; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					codeword[j] = PH::qmul(codeword[j], codeword[j+h]);
+					codeword[j] *= codeword[j+h];
 		for (int i = 0; i < N; i += 2) {
-			TYPE msg0 = frozen[i] ? PH::one() : codeword[i];
-			TYPE msg1 = frozen[i+1] ? PH::one() : codeword[i+1];
-			codeword[i] = PH::qmul(msg0, msg1);
+			int8_t msg0 = frozen[i] ? 1 : codeword[i];
+			int8_t msg1 = frozen[i+1] ? 1 : codeword[i+1];
+			codeword[i] = msg0 * msg1;
 			codeword[i+1] = msg1;
 		}
 		for (int h = 2; h < N; h *= 2)
 			for (int i = 0; i < N; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					codeword[j] = PH::qmul(codeword[j], codeword[j+h]);
+					codeword[j] *= codeword[j+h];
 	}
 };
 
