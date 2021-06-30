@@ -10,10 +10,12 @@ template <int MAX_M>
 class PolarDecoder
 {
 #ifdef __AVX2__
-	static const int WIDTH = 32;
+	static const int LEVEL = 5;
 #else
-	static const int WIDTH = 16;
+	static const int LEVEL = 4;
 #endif
+	static const int WIDTH = 1 << LEVEL;
+	static const int COUNT = 1 << (MAX_M - LEVEL);
 	typedef SIMD<int8_t, WIDTH> VECT;
 
 	static int8_t signum(int8_t v)
@@ -106,93 +108,159 @@ class PolarDecoder
 	void left(int8_t *, int)
 	{
 		assert(level <= MAX_M);
-		int length = 1 << level;
-		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = prod(soft[i+length], soft[i+length/2+length]);
+		if (level <= LEVEL) {
+			int length = 1 << level;
+			for (int i = 0; i < length/2; ++i)
+				reinterpret_cast<int8_t *>(soft)[i+length/2] =
+					prod(reinterpret_cast<int8_t *>(soft)[i+length],
+					reinterpret_cast<int8_t *>(soft)[i+length/2+length]);
+		} else {
+			int count = 1 << (level - LEVEL);
+			for (int i = 0; i < count/2; ++i)
+				soft[i+count/2] = prod(soft[i+count], soft[i+count/2+count]);
+		}
 	}
 	template <int level>
 	void right(int8_t *, int index)
 	{
 		assert(level <= MAX_M);
-		int length = 1 << level;
-		for (int i = 0; i < length/2; ++i)
-			soft[i+length/2] = madd(hard[index+i], soft[i+length], soft[i+length/2+length]);
+		if (level <= LEVEL) {
+			int length = 1 << level;
+			for (int i = 0; i < length/2; ++i)
+				reinterpret_cast<int8_t *>(soft)[i+length/2] =
+					madd(reinterpret_cast<int8_t *>(hard)[index+i],
+					reinterpret_cast<int8_t *>(soft)[i+length],
+					reinterpret_cast<int8_t *>(soft)[i+length/2+length]);
+		} else {
+			int count = 1 << (level - LEVEL);
+			for (int i = 0; i < count/2; ++i)
+				soft[i+count/2] = madd(hard[index/WIDTH+i], soft[i+count], soft[i+count/2+count]);
+		}
 	}
 	template <int level>
 	void comb(int8_t *, int index)
 	{
 		assert(level <= MAX_M);
-		int length = 1 << level;
-		for (int i = 0; i < length/2; ++i)
-			hard[index+i] = qmul(hard[index+i], hard[index+i+length/2]);
+		if (level <= LEVEL) {
+			int length = 1 << level;
+			for (int i = 0; i < length/2; ++i)
+				reinterpret_cast<int8_t *>(hard)[index+i] =
+					qmul(reinterpret_cast<int8_t *>(hard)[index+i],
+					reinterpret_cast<int8_t *>(hard)[index+i+length/2]);
+		} else {
+			int count = 1 << (level - LEVEL);
+			for (int i = 0; i < count/2; ++i)
+				hard[index/WIDTH+i] = qmul(hard[index/WIDTH+i], hard[index/WIDTH+i+count/2]);
+		}
 	}
 	template <int level>
 	void rate0(int8_t *, int index)
 	{
 		assert(level <= MAX_M);
-		int length = 1 << level;
-		for (int i = 0; i < length; ++i)
-			hard[index+i] = 1;
+		if (level < LEVEL) {
+			int length = 1 << level;
+			for (int i = 0; i < length; ++i)
+				reinterpret_cast<int8_t *>(hard)[index+i] = 1;
+		} else {
+			int count = 1 << (level - LEVEL);
+			for (int i = 0; i < count; ++i)
+				hard[index/WIDTH+i] = one();
+		}
 	}
 	template <int level>
 	void rate1(int8_t *mesg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
-		for (int i = 0; i < length; ++i)
-			hard[index+i] = signum(soft[i+length]);
+		if (level < LEVEL) {
+			for (int i = 0; i < length; ++i)
+				reinterpret_cast<int8_t *>(hard)[index+i] = signum(reinterpret_cast<int8_t *>(soft)[i+length]);
+		} else {
+			int count = 1 << (level - LEVEL);
+			for (int i = 0; i < count; ++i)
+				hard[index/WIDTH+i] = signum(soft[i+count]);
+		}
 		for (int i = 0; i < length; i += 2) {
-			soft[i] = qmul(hard[index+i], hard[index+i+1]);
-			soft[i+1] = hard[index+i+1];
+			reinterpret_cast<int8_t *>(soft)[i] = qmul(reinterpret_cast<int8_t *>(hard)[index+i], reinterpret_cast<int8_t *>(hard)[index+i+1]);
+			reinterpret_cast<int8_t *>(soft)[i+1] = reinterpret_cast<int8_t *>(hard)[index+i+1];
 		}
 		for (int h = 2; h < length; h *= 2)
 			for (int i = 0; i < length; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					soft[j] = qmul(soft[j], soft[j+h]);
+					reinterpret_cast<int8_t *>(soft)[j] = qmul(reinterpret_cast<int8_t *>(soft)[j], reinterpret_cast<int8_t *>(soft)[j+h]);
 		for (int i = 0; i < length; ++i)
-			mesg[i] = soft[i];
+			mesg[i] = reinterpret_cast<int8_t *>(soft)[i];
 	}
 	template <int level>
 	void rep(int8_t *mesg, int index)
 	{
 		assert(level <= MAX_M);
-		int length = 1 << level;
-		for (int h = length; h; h /= 2)
-			for (int i = 0; i < h/2; ++i)
-				soft[i+h/2] = qadd(soft[i+h], soft[i+h/2+h]);
-		int8_t hardi = signum(soft[1]);
-		*mesg = hardi;
-		for (int i = 0; i < length; ++i)
-			hard[index+i] = hardi;
+		if (level < LEVEL) {
+			int length = 1 << level;
+			for (int h = length; h; h /= 2)
+				for (int i = 0; i < h/2; ++i)
+					reinterpret_cast<int8_t *>(soft)[i+h/2] =
+						qadd(reinterpret_cast<int8_t *>(soft)[i+h],
+						reinterpret_cast<int8_t *>(soft)[i+h/2+h]);
+			int8_t hardi = signum(reinterpret_cast<int8_t *>(soft)[1]);
+			*mesg = hardi;
+			for (int i = 0; i < length; ++i)
+				reinterpret_cast<int8_t *>(hard)[index+i] = hardi;
+		} else {
+			int count = 1 << (level - LEVEL);
+			VECT vsum = soft[count];
+			for (int i = 1; i < count; ++i)
+				vsum = qadd(vsum, soft[i+count]);
+			int8_t hsum = vsum.v[0];
+			for (int i = 1; i < WIDTH; ++i)
+				hsum = qadd(hsum, vsum.v[i]);
+			int8_t hardi = signum(hsum);
+			*mesg = hardi;
+			for (int i = 0; i < count; ++i)
+				hard[index/WIDTH+i] = vdup<VECT>(hardi);
+		}
 	}
 	template <int level>
 	void spc(int8_t *mesg, int index)
 	{
 		assert(level <= MAX_M);
 		int length = 1 << level;
-		for (int i = 0; i < length; ++i)
-			hard[index+i] = decide(soft[i+length]);
-		int8_t parity = hard[index];
-		for (int i = 1; i < length; ++i)
-			parity = qmul(parity, hard[index+i]);
+		int8_t parity;
+		if (level < LEVEL) {
+			for (int i = 0; i < length; ++i)
+				reinterpret_cast<int8_t *>(hard)[index+i] = decide(reinterpret_cast<int8_t *>(soft)[i+length]);
+			parity = reinterpret_cast<int8_t *>(hard)[index];
+			for (int i = 1; i < length; ++i)
+				parity = qmul(parity, reinterpret_cast<int8_t *>(hard)[index+i]);
+		} else {
+			int count = 1 << (level - LEVEL);
+			for (int i = 0; i < count; ++i)
+				hard[index/WIDTH+i] = signum(soft[i+count]);
+			VECT vpar = hard[index/WIDTH];
+			for (int i = 1; i < count; ++i)
+				vpar = qmul(vpar, hard[index/WIDTH+i]);
+			parity = vpar.v[0];
+			for (int i = 1; i < WIDTH; ++i)
+				parity = qmul(parity, vpar.v[i]);
+		}
 		int worst = 0;
 		for (int i = 1; i < length; ++i)
-			if (qabs(soft[worst+length]) > qabs(soft[i+length]))
+			if (qabs(reinterpret_cast<int8_t *>(soft)[worst+length]) > qabs(reinterpret_cast<int8_t *>(soft)[i+length]))
 				worst = i;
-		hard[index+worst] = qmul(hard[index+worst], parity);
+		reinterpret_cast<int8_t *>(hard)[index+worst] = qmul(reinterpret_cast<int8_t *>(hard)[index+worst], parity);
 		for (int i = 0; i < length; i += 2) {
-			soft[i] = qmul(hard[index+i], hard[index+i+1]);
-			soft[i+1] = hard[index+i+1];
+			reinterpret_cast<int8_t *>(soft)[i] = qmul(reinterpret_cast<int8_t *>(hard)[index+i], reinterpret_cast<int8_t *>(hard)[index+i+1]);
+			reinterpret_cast<int8_t *>(soft)[i+1] = reinterpret_cast<int8_t *>(hard)[index+i+1];
 		}
 		for (int h = 2; h < length; h *= 2)
 			for (int i = 0; i < length; i += 2 * h)
 				for (int j = i; j < i + h; ++j)
-					soft[j] = qmul(soft[j], soft[j+h]);
+					reinterpret_cast<int8_t *>(soft)[j] = qmul(reinterpret_cast<int8_t *>(soft)[j], reinterpret_cast<int8_t *>(soft)[j+h]);
 		for (int i = 0; i < length-1; ++i)
-			mesg[i] = soft[i+1];
+			mesg[i] = reinterpret_cast<int8_t *>(soft)[i+1];
 	}
-	int8_t soft[1U<<(MAX_M+1)];
-	int8_t hard[1U<<MAX_M];
+	VECT soft[2*COUNT];
+	VECT hard[COUNT];
 public:
 	void operator()(int8_t *message, const int8_t *codeword, const uint8_t *program)
 	{
@@ -200,7 +268,7 @@ public:
 		assert(level <= MAX_M);
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
-			soft[i+length] = codeword[i];
+			reinterpret_cast<int8_t *>(soft)[i+length] = codeword[i];
 		int idx = 0, lvl = level;
 		int8_t *msg = message;
 		while (*program != 255) {
