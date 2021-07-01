@@ -1,2 +1,4 @@
 .*.swp
 testbench
+emitter
+program.hh

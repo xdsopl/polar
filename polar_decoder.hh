@@ -112,6 +112,9 @@ public:
 		assert(level <= MAX_M);
 		for (int i = 0; i < length; ++i)
 			soft[i+length] = codeword[i];
+#if 1
+#include "program.hh"
+#else
 		while (*program != 255) {
 			switch (*program++) {
 			case 0:	switch (lvl--) {
@@ -348,6 +351,7 @@ public:
 			default: assert(false);
 			}
 		}
+#endif
 		assert(lvl == level);
 	}
 };

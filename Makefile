@@ -15,11 +15,19 @@ all: testbench
 test: testbench
 	$(QEMU) ./testbench
 
+.PHONY: emit
+
+emit: emitter
+	$(QEMU) ./emitter > program.hh
+
+emitter: polar_emitter.cc *.hh
+	$(CXX) $(CXXFLAGS) $< -o $@
+
 testbench: testbench.cc *.hh
 	$(CXX) $(CXXFLAGS) $< -o $@
 
 .PHONY: clean
 
 clean:
-	rm -f testbench
+	rm -f testbench emitter program.hh
 
