@@ -60,6 +60,26 @@ class PolarDecoder
 			hard[i] = PH::one();
 	}
 	template <int level>
+	static void rate1_comb(TYPE *soft, TYPE *hard, TYPE *mesg)
+	{
+		assert(level <= MAX_M);
+		int length = 1 << (level - 1);
+		for (int i = 0; i < length; ++i)
+			hard[i+length] = PH::signum(soft[i+length]);
+		for (int i = 0; i < length; i += 2) {
+			soft[i] = PH::qmul(hard[i+length], hard[i+1+length]);
+			soft[i+1] = hard[i+1+length];
+		}
+		for (int h = 2; h < length; h *= 2)
+			for (int i = 0; i < length; i += 2 * h)
+				for (int j = i; j < i + h; ++j)
+					soft[j] = PH::qmul(soft[j], soft[j+h]);
+		for (int i = 0; i < length; ++i)
+			mesg[i] = soft[i];
+		for (int i = 0; i < length; ++i)
+			hard[i] = PH::qmul(hard[i], hard[i+length]);
+	}
+	template <int level>
 	static void rate1(TYPE *soft, TYPE *hard, TYPE *mesg)
 	{
 		assert(level <= MAX_M);
@@ -427,6 +447,39 @@ public:
 				case 31: rate0_comb<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} break;
+			case 9: hrd -= 1<<lvl; switch (++lvl) {
+				case 2: rate1_comb<2>(sft, hrd, msg); break;
+				case 3: rate1_comb<3>(sft, hrd, msg); break;
+				case 4: rate1_comb<4>(sft, hrd, msg); break;
+				case 5: rate1_comb<5>(sft, hrd, msg); break;
+				case 6: rate1_comb<6>(sft, hrd, msg); break;
+				case 7: rate1_comb<7>(sft, hrd, msg); break;
+				case 8: rate1_comb<8>(sft, hrd, msg); break;
+				case 9: rate1_comb<9>(sft, hrd, msg); break;
+				case 10: rate1_comb<10>(sft, hrd, msg); break;
+				case 11: rate1_comb<11>(sft, hrd, msg); break;
+				case 12: rate1_comb<12>(sft, hrd, msg); break;
+				case 13: rate1_comb<13>(sft, hrd, msg); break;
+				case 14: rate1_comb<14>(sft, hrd, msg); break;
+				case 15: rate1_comb<15>(sft, hrd, msg); break;
+				case 16: rate1_comb<16>(sft, hrd, msg); break;
+				case 17: rate1_comb<17>(sft, hrd, msg); break;
+				case 18: rate1_comb<18>(sft, hrd, msg); break;
+				case 19: rate1_comb<19>(sft, hrd, msg); break;
+				case 20: rate1_comb<20>(sft, hrd, msg); break;
+				case 21: rate1_comb<21>(sft, hrd, msg); break;
+				case 22: rate1_comb<22>(sft, hrd, msg); break;
+				case 23: rate1_comb<23>(sft, hrd, msg); break;
+				case 24: rate1_comb<24>(sft, hrd, msg); break;
+				case 25: rate1_comb<25>(sft, hrd, msg); break;
+				case 26: rate1_comb<26>(sft, hrd, msg); break;
+				case 27: rate1_comb<27>(sft, hrd, msg); break;
+				case 28: rate1_comb<28>(sft, hrd, msg); break;
+				case 29: rate1_comb<29>(sft, hrd, msg); break;
+				case 30: rate1_comb<30>(sft, hrd, msg); break;
+				case 31: rate1_comb<31>(sft, hrd, msg); break;
+				default: assert(false);
+				} msg += 1<<(lvl-1); break;
 			default: assert(false);
 			}
 		}

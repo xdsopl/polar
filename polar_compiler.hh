@@ -10,7 +10,7 @@ class PolarCompiler
 {
 	static const int left = 0, right = 1, comb = 2,
 		rate0 = 3, rate1 = 4, rep = 5, spc = 6,
-		rate0_right = 7, rate0_comb = 8;
+		rate0_right = 7, rate0_comb = 8, rate1_comb = 9;
 	static int frozen_count(const uint8_t *frozen, int level)
 	{
 		int count = 0;
@@ -35,6 +35,11 @@ class PolarCompiler
 			*(*program)++ = rate0_right;
 			compile(program, frozen+(1<<(level-1)), level-1);
 			*(*program)++ = rate0_comb;
+		} else if (rcnt == 0) {
+			*(*program)++ = left;
+			compile(program, frozen, level-1);
+			*(*program)++ = right;
+			*(*program)++ = rate1_comb;
 		} else {
 			*(*program)++ = left;
 			compile(program, frozen, level-1);
