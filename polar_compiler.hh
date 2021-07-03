@@ -38,7 +38,6 @@ class PolarCompiler
 		} else if (rcnt == 0) {
 			*(*program)++ = left;
 			compile(program, frozen, level-1);
-			*(*program)++ = right;
 			*(*program)++ = rate1_comb;
 		} else {
 			*(*program)++ = left;

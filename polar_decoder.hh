@@ -65,6 +65,8 @@ class PolarDecoder
 		assert(level <= MAX_M);
 		int length = 1 << (level - 1);
 		for (int i = 0; i < length; ++i)
+			soft[i+length] = PH::madd(hard[i], soft[i+2*length], soft[i+3*length]);
+		for (int i = 0; i < length; ++i)
 			hard[i+length] = PH::signum(soft[i+length]);
 		for (int i = 0; i < length; i += 2) {
 			soft[i] = PH::qmul(hard[i+length], hard[i+1+length]);
@@ -447,7 +449,7 @@ public:
 				case 31: rate0_comb<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} break;
-			case 9: hrd -= 1<<lvl; switch (++lvl) {
+			case 9: switch (++lvl) {
 				case 2: rate1_comb<2>(sft, hrd, msg); break;
 				case 3: rate1_comb<3>(sft, hrd, msg); break;
 				case 4: rate1_comb<4>(sft, hrd, msg); break;
