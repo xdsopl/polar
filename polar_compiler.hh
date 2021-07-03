@@ -20,14 +20,15 @@ class PolarCompiler
 	static void compile(uint8_t **program, const uint8_t *frozen, int level)
 	{
 		assert(level > 0);
-		int count = frozen_count(frozen, level);
-		if (count == 1<<level) {
+		int lcnt = frozen_count(frozen, level-1);
+		int rcnt = frozen_count(frozen+(1<<(level-1)), level-1);
+		if (lcnt == 1<<(level-1) && rcnt == 1<<(level-1)) {
 			*(*program)++ = rate0;
-		} else if (count == 0) {
+		} else if (lcnt == 0 && rcnt == 0) {
 			*(*program)++ = rate1;
-		} else if (count == (1<<level)-1 && !frozen[(1<<level)-1]) {
+		} else if (lcnt == 1<<(level-1) && rcnt == (1<<(level-1))-1 && !frozen[(1<<level)-1]) {
 			*(*program)++ = rep;
-		} else if (count == 1 && frozen[0]) {
+		} else if (lcnt == 1 && rcnt == 0 && frozen[0]) {
 			*(*program)++ = spc;
 		} else {
 			*(*program)++ = left;
