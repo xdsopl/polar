@@ -30,6 +30,7 @@ struct PolarTree<TYPE, M0, 0>
 {
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
+	typedef typename PH::MAP MAP;
 	static void decode(PATH *metric, TYPE *message, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
 		TYPE hrd, sft = soft[1];
@@ -53,7 +54,7 @@ struct PolarTree<TYPE, M0, 0>
 			std::nth_element(perm, perm+TYPE::SIZE, perm+2*TYPE::SIZE, [fork](int a, int b){ return fork[a] < fork[b]; });
 			for (int k = 0; k < TYPE::SIZE; ++k)
 				metric[k] = fork[perm[k]];
-			SIMD<typename TYPE::uint_type, TYPE::SIZE> map;
+			MAP map;
 			for (int k = 0; k < TYPE::SIZE; ++k)
 				map.v[k] = perm[k] % TYPE::SIZE;
 			for (int i = 0; i < (1<<M0); ++i)
