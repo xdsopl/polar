@@ -65,9 +65,7 @@ class PolarDecoder
 		assert(level <= MAX_M);
 		int length = 1 << (level - 1);
 		for (int i = 0; i < length; ++i)
-			soft[i+length] = PH::madd(hard[i], soft[i+2*length], soft[i+3*length]);
-		for (int i = 0; i < length; ++i)
-			hard[i+length] = PH::signum(soft[i+length]);
+			hard[i] = PH::qmul(hard[i], hard[i+length] = PH::signum(PH::madd(hard[i], soft[i+2*length], soft[i+3*length])));
 		for (int i = 0; i < length; i += 2) {
 			soft[i] = PH::qmul(hard[i+length], hard[i+1+length]);
 			soft[i+1] = hard[i+1+length];
@@ -78,8 +76,6 @@ class PolarDecoder
 					soft[j] = PH::qmul(soft[j], soft[j+h]);
 		for (int i = 0; i < length; ++i)
 			mesg[i] = soft[i];
-		for (int i = 0; i < length; ++i)
-			hard[i] = PH::qmul(hard[i], hard[i+length]);
 	}
 	template <int level>
 	static void rate1(TYPE *soft, TYPE *hard, TYPE *mesg)
