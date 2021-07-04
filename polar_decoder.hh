@@ -12,6 +12,19 @@ class PolarDecoder
 	typedef PolarHelper<TYPE> PH;
 
 	template <int level>
+	static void trans(TYPE *out, const TYPE *inp)
+	{
+		int length = 1 << level;
+		for (int i = 0; i < length; i += 2) {
+			out[i] = PH::qmul(inp[i], inp[i+1]);
+			out[i+1] = inp[i+1];
+		}
+		for (int h = 2; h < length; h *= 2)
+			for (int i = 0; i < length; i += 2 * h)
+				for (int j = i; j < i + h; ++j)
+					out[j] = PH::qmul(out[j], out[j+h]);
+	}
+	template <int level>
 	static void left(TYPE *soft, TYPE *, TYPE *)
 	{
 		assert(level <= MAX_M);
@@ -66,16 +79,7 @@ class PolarDecoder
 		int length = 1 << (level - 1);
 		for (int i = 0; i < length; ++i)
 			hard[i] = PH::qmul(hard[i], hard[i+length] = PH::signum(PH::madd(hard[i], soft[i+2*length], soft[i+3*length])));
-		for (int i = 0; i < length; i += 2) {
-			soft[i] = PH::qmul(hard[i+length], hard[i+1+length]);
-			soft[i+1] = hard[i+1+length];
-		}
-		for (int h = 2; h < length; h *= 2)
-			for (int i = 0; i < length; i += 2 * h)
-				for (int j = i; j < i + h; ++j)
-					soft[j] = PH::qmul(soft[j], soft[j+h]);
-		for (int i = 0; i < length; ++i)
-			mesg[i] = soft[i];
+		trans<level-1>(mesg, hard+length);
 	}
 	template <int level>
 	static void rate1(TYPE *soft, TYPE *hard, TYPE *mesg)
@@ -84,16 +88,7 @@ class PolarDecoder
 		int length = 1 << level;
 		for (int i = 0; i < length; ++i)
 			hard[i] = PH::signum(soft[i+length]);
-		for (int i = 0; i < length; i += 2) {
-			soft[i] = PH::qmul(hard[i], hard[i+1]);
-			soft[i+1] = hard[i+1];
-		}
-		for (int h = 2; h < length; h *= 2)
-			for (int i = 0; i < length; i += 2 * h)
-				for (int j = i; j < i + h; ++j)
-					soft[j] = PH::qmul(soft[j], soft[j+h]);
-		for (int i = 0; i < length; ++i)
-			mesg[i] = soft[i];
+		trans<level>(mesg, hard);
 	}
 	template <int level>
 	static void rep(TYPE *soft, TYPE *hard, TYPE *mesg)
@@ -125,14 +120,7 @@ class PolarDecoder
 			weak = PH::qmin(weak, soft[i]);
 		for (int i = 0; i < length; ++i)
 			hard[i] = PH::flip(hard[i], parity, weak, soft[i]);
-		for (int i = 0; i < length; i += 2) {
-			soft[i] = PH::qmul(hard[i], hard[i+1]);
-			soft[i+1] = hard[i+1];
-		}
-		for (int h = 2; h < length; h *= 2)
-			for (int i = 0; i < length; i += 2 * h)
-				for (int j = i; j < i + h; ++j)
-					soft[j] = PH::qmul(soft[j], soft[j+h]);
+		trans<level>(soft, hard);
 		for (int i = 0; i < length-1; ++i)
 			mesg[i] = soft[i+1];
 	}
