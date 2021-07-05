@@ -58,6 +58,7 @@ struct PolarHelper<SIMD<VALUE, WIDTH>>
 {
 	typedef SIMD<VALUE, WIDTH> TYPE;
 	typedef VALUE PATH;
+	typedef SIMD<typename TYPE::uint_type, WIDTH> MAP;
 	static TYPE one()
 	{
 		return vdup<TYPE>(1);
@@ -101,6 +102,7 @@ struct PolarHelper<SIMD<int8_t, WIDTH>>
 {
 	typedef SIMD<int8_t, WIDTH> TYPE;
 	typedef int PATH;
+	typedef SIMD<uint8_t, WIDTH> MAP;
 	static TYPE one()
 	{
 		return vdup<TYPE>(1);
