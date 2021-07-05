@@ -11,15 +11,16 @@ struct PolarTree
 {
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
+	typedef typename PH::MAP MAP;
 	static const int N = 1 << M;
-	static void decode(PATH *metric, TYPE *message, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
+	static void decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
 		for (int i = 0; i < N/2; ++i)
 			soft[i+N/2] = PH::prod(soft[i+N], soft[i+N/2+N]);
-		PolarTree<TYPE, M0, M-1>::decode(metric, message, count, hard, soft, frozen, index);
+		PolarTree<TYPE, M0, M-1>::decode(metric, message, maps, count, hard, soft, frozen, index);
 		for (int i = 0; i < N/2; ++i)
 			soft[i+N/2] = PH::madd(hard[index+i], soft[i+N], soft[i+N/2+N]);
-		PolarTree<TYPE, M0, M-1>::decode(metric, message, count, hard, soft, frozen+N/2, index+N/2);
+		PolarTree<TYPE, M0, M-1>::decode(metric, message, maps, count, hard, soft, frozen+N/2, index+N/2);
 		for (int i = 0; i < N/2; ++i)
 			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+N/2]);
 	}
@@ -31,7 +32,7 @@ struct PolarTree<TYPE, M0, 0>
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
 	typedef typename PH::MAP MAP;
-	static void decode(PATH *metric, TYPE *message, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
+	static void decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
 		TYPE hrd, sft = soft[1];
 		if (*frozen) {
@@ -61,11 +62,11 @@ struct PolarTree<TYPE, M0, 0>
 				soft[i] = vshuf(soft[i], map);
 			for (int i = 0; i < (1<<M0); ++i)
 				hard[i] = vshuf(hard[i], map);
-			for (int i = 0; i < *count; ++i)
-				message[i] = vshuf(message[i], map);
 			for (int k = 0; k < TYPE::SIZE; ++k)
 				hrd.v[k] = perm[k] < TYPE::SIZE ? 1 : -1;
-			message[(*count)++] = hrd;
+			message[*count] = hrd;
+			maps[*count] = map;
+			++*count;
 		}
 		hard[index] = hrd;
 	}
@@ -77,9 +78,11 @@ class PolarDecoder
 	typedef PolarHelper<TYPE> PH;
 	typedef typename TYPE::value_type value_type;
 	typedef typename PH::PATH PATH;
+	typedef typename PH::MAP MAP;
 	static const int N = 1 << M;
 	TYPE soft[2*N];
 	TYPE hard[N];
+	MAP maps[N];
 public:
 	void operator()(PATH *metric, TYPE *message, const value_type *codeword, const uint8_t *frozen)
 	{
@@ -89,7 +92,14 @@ public:
 			metric[k] = 1000;
 		for (int i = 0; i < N; ++i)
 			soft[N+i] = vdup<TYPE>(codeword[i]);
-		PolarTree<TYPE, M, M>::decode(metric, message, &count, hard, soft, frozen, 0);
+		PolarTree<TYPE, M, M>::decode(metric, message, maps, &count, hard, soft, frozen, 0);
+		MAP acc = maps[count-1];
+		for (int i = count-2; i >= 0; --i) {
+			message[i] = vshuf(message[i], acc);
+			MAP map = maps[i];
+			maps[i] = acc;
+			acc = vshuf(map, acc);
+		}
 	}
 };
 
