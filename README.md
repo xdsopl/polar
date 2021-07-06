@@ -18,6 +18,8 @@ by Gabi Sarkis, Ido Tal, Pascal Giard, Alexander Vardy, Claude Thibeault and War
 by Harish Vangala, Emanuele Viterbo and Yi Hong - 2015
 * [The Flesh of Polar Codes](https://youtu.be/VhyoZSB9g0w)  
 by Emre Telatar - ISIT 2017
+* [Successive Cancellation List Decoding](https://youtu.be/WbC5Ux5Pjp8)  
+by Andrew Thangaraj - NPTEL 2019
 
 ### Comparing various systematic and non-systematic rate-1/2 code lengths
 
