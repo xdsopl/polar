@@ -6,40 +6,44 @@ Copyright 2020 Ahmet Inan <xdsopl@gmail.com>
 
 #pragma once
 
-template <typename TYPE, int M0, int M>
+template <typename TYPE, int M>
 struct PolarTree
 {
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
 	typedef typename PH::MAP MAP;
 	static const int N = 1 << M;
-	static void decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
+	static MAP decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
 		for (int i = 0; i < N/2; ++i)
 			soft[i+N/2] = PH::prod(soft[i+N], soft[i+N/2+N]);
-		PolarTree<TYPE, M0, M-1>::decode(metric, message, maps, count, hard, soft, frozen, index);
+		MAP lmap = PolarTree<TYPE, M-1>::decode(metric, message, maps, count, hard, soft, frozen, index);
 		for (int i = 0; i < N/2; ++i)
-			soft[i+N/2] = PH::madd(hard[index+i], soft[i+N], soft[i+N/2+N]);
-		PolarTree<TYPE, M0, M-1>::decode(metric, message, maps, count, hard, soft, frozen+N/2, index+N/2);
+			soft[i+N/2] = PH::madd(hard[index+i], vshuf(soft[i+N], lmap), vshuf(soft[i+N/2+N], lmap));
+		MAP rmap = PolarTree<TYPE, M-1>::decode(metric, message, maps, count, hard, soft, frozen+N/2, index+N/2);
 		for (int i = 0; i < N/2; ++i)
-			hard[index+i] = PH::qmul(hard[index+i], hard[index+i+N/2]);
+			hard[index+i] = PH::qmul(vshuf(hard[index+i], rmap), hard[index+i+N/2]);
+		return vshuf(lmap, rmap);
 	}
 };
 
-template <typename TYPE, int M0>
-struct PolarTree<TYPE, M0, 0>
+template <typename TYPE>
+struct PolarTree<TYPE, 0>
 {
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
 	typedef typename PH::MAP MAP;
-	static void decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
+	static MAP decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
 	{
+		MAP map;
 		TYPE hrd, sft = soft[1];
 		if (*frozen) {
 			for (int k = 0; k < TYPE::SIZE; ++k)
 				if (sft.v[k] < 0)
 					metric[k] -= sft.v[k];
 			hrd = PH::one();
+			for (int k = 0; k < TYPE::SIZE; ++k)
+				map.v[k] = k;
 		} else {
 			PATH fork[2*TYPE::SIZE];
 			for (int k = 0; k < TYPE::SIZE; ++k)
@@ -55,13 +59,8 @@ struct PolarTree<TYPE, M0, 0>
 			std::nth_element(perm, perm+TYPE::SIZE, perm+2*TYPE::SIZE, [fork](int a, int b){ return fork[a] < fork[b]; });
 			for (int k = 0; k < TYPE::SIZE; ++k)
 				metric[k] = fork[perm[k]];
-			MAP map;
 			for (int k = 0; k < TYPE::SIZE; ++k)
 				map.v[k] = perm[k] % TYPE::SIZE;
-			for (int i = 0; i < (1<<M0); ++i)
-				soft[i] = vshuf(soft[i], map);
-			for (int i = 0; i < (1<<M0); ++i)
-				hard[i] = vshuf(hard[i], map);
 			for (int k = 0; k < TYPE::SIZE; ++k)
 				hrd.v[k] = perm[k] < TYPE::SIZE ? 1 : -1;
 			message[*count] = hrd;
@@ -69,6 +68,7 @@ struct PolarTree<TYPE, M0, 0>
 			++*count;
 		}
 		hard[index] = hrd;
+		return map;
 	}
 };
 
@@ -92,7 +92,7 @@ public:
 			metric[k] = 1000;
 		for (int i = 0; i < N; ++i)
 			soft[N+i] = vdup<TYPE>(codeword[i]);
-		PolarTree<TYPE, M, M>::decode(metric, message, maps, &count, hard, soft, frozen, 0);
+		PolarTree<TYPE, M>::decode(metric, message, maps, &count, hard, soft, frozen, 0);
 		MAP acc = maps[count-1];
 		for (int i = count-2; i >= 0; --i) {
 			message[i] = vshuf(message[i], acc);
