@@ -101,9 +101,7 @@ public:
 		MAP acc = maps[count-1];
 		for (int i = count-2; i >= 0; --i) {
 			message[i] = vshuf(message[i], acc);
-			MAP map = maps[i];
-			maps[i] = acc;
-			acc = vshuf(map, acc);
+			acc = vshuf(maps[i], acc);
 		}
 	}
 };
