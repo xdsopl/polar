@@ -13,16 +13,16 @@ struct PolarTree
 	typedef typename PH::PATH PATH;
 	typedef typename PH::MAP MAP;
 	static const int N = 1 << M;
-	static MAP decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
+	static MAP decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen)
 	{
 		for (int i = 0; i < N/2; ++i)
 			soft[i+N/2] = PH::prod(soft[i+N], soft[i+N/2+N]);
-		MAP lmap = PolarTree<TYPE, M-1>::decode(metric, message, maps, count, hard, soft, frozen, index);
+		MAP lmap = PolarTree<TYPE, M-1>::decode(metric, message, maps, count, hard, soft, frozen);
 		for (int i = 0; i < N/2; ++i)
-			soft[i+N/2] = PH::madd(hard[index+i], vshuf(soft[i+N], lmap), vshuf(soft[i+N/2+N], lmap));
-		MAP rmap = PolarTree<TYPE, M-1>::decode(metric, message, maps, count, hard, soft, frozen+N/2, index+N/2);
+			soft[i+N/2] = PH::madd(hard[i], vshuf(soft[i+N], lmap), vshuf(soft[i+N/2+N], lmap));
+		MAP rmap = PolarTree<TYPE, M-1>::decode(metric, message, maps, count, hard+N/2, soft, frozen+N/2);
 		for (int i = 0; i < N/2; ++i)
-			hard[index+i] = PH::qmul(vshuf(hard[index+i], rmap), hard[index+i+N/2]);
+			hard[i] = PH::qmul(vshuf(hard[i], rmap), hard[i+N/2]);
 		return vshuf(lmap, rmap);
 	}
 };
@@ -33,7 +33,7 @@ struct PolarTree<TYPE, 0>
 	typedef PolarHelper<TYPE> PH;
 	typedef typename PH::PATH PATH;
 	typedef typename PH::MAP MAP;
-	static MAP decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen, int index)
+	static MAP decode(PATH *metric, TYPE *message, MAP *maps, int *count, TYPE *hard, TYPE *soft, const uint8_t *frozen)
 	{
 		MAP map;
 		TYPE hrd, sft = soft[1];
@@ -67,7 +67,7 @@ struct PolarTree<TYPE, 0>
 			maps[*count] = map;
 			++*count;
 		}
-		hard[index] = hrd;
+		*hard = hrd;
 		return map;
 	}
 };
@@ -92,7 +92,7 @@ public:
 			metric[k] = 1000;
 		for (int i = 0; i < N; ++i)
 			soft[N+i] = vdup<TYPE>(codeword[i]);
-		PolarTree<TYPE, M>::decode(metric, message, maps, &count, hard, soft, frozen, 0);
+		PolarTree<TYPE, M>::decode(metric, message, maps, &count, hard, soft, frozen);
 		MAP acc = maps[count-1];
 		for (int i = count-2; i >= 0; --i) {
 			message[i] = vshuf(message[i], acc);
