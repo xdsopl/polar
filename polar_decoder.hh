@@ -10,6 +10,7 @@ template <typename TYPE, int MAX_M>
 class PolarDecoder
 {
 	typedef PolarHelper<TYPE> PH;
+	static const int MAX_N = 1 << MAX_M;
 
 	template <int level>
 	static void trans(TYPE *out, const TYPE *inp)
@@ -124,8 +125,8 @@ class PolarDecoder
 		for (int i = 0; i < length-1; ++i)
 			mesg[i] = soft[i+1];
 	}
-	TYPE soft[1U<<(MAX_M+1)];
-	TYPE hard[1U<<MAX_M];
+	TYPE soft[2*MAX_N];
+	TYPE hard[MAX_N];
 public:
 	void operator()(TYPE *message, const TYPE *codeword, const uint8_t *program)
 	{
@@ -166,7 +167,6 @@ public:
 				case 28: left<28>(sft, hrd, msg); break;
 				case 29: left<29>(sft, hrd, msg); break;
 				case 30: left<30>(sft, hrd, msg); break;
-				case 31: left<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} break;
 			case 1: switch (lvl+1) {
@@ -199,7 +199,6 @@ public:
 				case 28: right<28>(sft, hrd, msg); break;
 				case 29: right<29>(sft, hrd, msg); break;
 				case 30: right<30>(sft, hrd, msg); break;
-				case 31: right<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} hrd += 1<<lvl; break;
 			case 2: hrd -= 1<<lvl; switch (++lvl) {
@@ -232,7 +231,6 @@ public:
 				case 28: comb<28>(sft, hrd, msg); break;
 				case 29: comb<29>(sft, hrd, msg); break;
 				case 30: comb<30>(sft, hrd, msg); break;
-				case 31: comb<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} break;
 			case 3: switch (lvl) {
@@ -265,7 +263,6 @@ public:
 				case 27: rate0<27>(sft, hrd, msg); break;
 				case 28: rate0<28>(sft, hrd, msg); break;
 				case 29: rate0<29>(sft, hrd, msg); break;
-				case 30: rate0<30>(sft, hrd, msg); break;
 				default: assert(false);
 				} break;
 			case 4: switch (lvl) {
@@ -298,7 +295,6 @@ public:
 				case 27: rate1<27>(sft, hrd, msg); break;
 				case 28: rate1<28>(sft, hrd, msg); break;
 				case 29: rate1<29>(sft, hrd, msg); break;
-				case 30: rate1<30>(sft, hrd, msg); break;
 				default: assert(false);
 				} msg += 1<<lvl; break;
 			case 5: switch (lvl) {
@@ -331,7 +327,6 @@ public:
 				case 27: rep<27>(sft, hrd, msg); break;
 				case 28: rep<28>(sft, hrd, msg); break;
 				case 29: rep<29>(sft, hrd, msg); break;
-				case 30: rep<30>(sft, hrd, msg); break;
 				default: assert(false);
 				} ++msg; break;
 			case 6: switch (lvl) {
@@ -364,7 +359,6 @@ public:
 				case 27: spc<27>(sft, hrd, msg); break;
 				case 28: spc<28>(sft, hrd, msg); break;
 				case 29: spc<29>(sft, hrd, msg); break;
-				case 30: spc<30>(sft, hrd, msg); break;
 				default: assert(false);
 				} msg += (1<<lvl)-1; break;
 			case 7: switch (lvl--) {
@@ -397,7 +391,6 @@ public:
 				case 28: rate0_right<28>(sft, hrd, msg); break;
 				case 29: rate0_right<29>(sft, hrd, msg); break;
 				case 30: rate0_right<30>(sft, hrd, msg); break;
-				case 31: rate0_right<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} hrd += 1<<lvl; break;
 			case 8: hrd -= 1<<lvl; switch (++lvl) {
@@ -430,7 +423,6 @@ public:
 				case 28: rate0_comb<28>(sft, hrd, msg); break;
 				case 29: rate0_comb<29>(sft, hrd, msg); break;
 				case 30: rate0_comb<30>(sft, hrd, msg); break;
-				case 31: rate0_comb<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} break;
 			case 9: switch (++lvl) {
@@ -463,7 +455,6 @@ public:
 				case 28: rate1_comb<28>(sft, hrd, msg); break;
 				case 29: rate1_comb<29>(sft, hrd, msg); break;
 				case 30: rate1_comb<30>(sft, hrd, msg); break;
-				case 31: rate1_comb<31>(sft, hrd, msg); break;
 				default: assert(false);
 				} msg += 1<<(lvl-1); break;
 			default: assert(false);
