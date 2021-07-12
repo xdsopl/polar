@@ -64,7 +64,6 @@ int main()
 	const int SIMD_WIDTH = SIZEOF_SIMD / sizeof(code_type);
 	typedef SIMD<code_type, SIMD_WIDTH> simd_type;
 #endif
-	int64_t loops = 320 / SIMD_WIDTH;
 	std::random_device rd;
 	typedef std::default_random_engine generator;
 	typedef std::uniform_int_distribution<int> distribution;
@@ -122,7 +121,8 @@ int main()
 		int64_t uncorrected_errors = 0;
 		int64_t ambiguity_erasures = 0;
 		double avg_mbs = 0;
-		for (int l = 0; l < loops; ++l) {
+		int64_t loops = 0;
+		while (uncorrected_errors < 1000 && ++loops < 320 / SIMD_WIDTH) {
 			for (int i = 0; i < SIMD_WIDTH * K; ++i)
 				message[i] = 1 - 2 * data();
 
@@ -187,15 +187,15 @@ int main()
 			for (int i = 0; i < SIMD_WIDTH * N; ++i)
 				quantization_erasures += !noisy[i];
 			for (int i = 0; i < SIMD_WIDTH * K; ++i)
-				uncorrected_errors += decoded[i] * message[i] < 0;
+				uncorrected_errors += decoded[i] * message[i] <= 0;
 			for (int i = 0; i < SIMD_WIDTH * K; ++i)
 				ambiguity_erasures += !decoded[i];
 		}
 
 		avg_mbs /= loops;
 		max_mbs = std::max(max_mbs, avg_mbs);
-		double bit_error_rate = (double)(uncorrected_errors + ambiguity_erasures) / (double)(SIMD_WIDTH * K * loops);
-		if (!uncorrected_errors && !ambiguity_erasures)
+		double bit_error_rate = (double)uncorrected_errors / (double)(SIMD_WIDTH * K * loops);
+		if (!uncorrected_errors)
 			min_SNR = std::min(min_SNR, SNR);
 		else
 			count = 0;
